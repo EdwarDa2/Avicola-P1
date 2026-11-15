@@ -170,7 +170,7 @@ async function runTests() {
     // ======================================
     // PRUEBA 6: Rechazar cantidades negativas
     // ======================================
-
+    
     await assert.rejects(
       () =>
         profiles.create({
