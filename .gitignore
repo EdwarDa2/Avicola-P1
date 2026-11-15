@@ -1,119 +1,99 @@
-# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
 
-# dependencies
-node_modules/
-
-# Expo
-.expo/
-dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
-
-# debug
-npm-debug.*
-yarn-debug.*
-yarn-error.*
-
-# macOS
-.DS_Store
-*.pem
-
-# local env files
-.env*.local
-
-# typescript
-*.tsbuildinfo
-
-example
-
-# generated native folders
-/ios
-/android
-
-# ==========================================
+# ============================================
 # PLANIFICADOR AVÍCOLA
 # React Native + Expo + TypeScript + SQLite
-# ==========================================
+# ============================================
 
-# Dependencias
+# --------------------------------------------
+# 1. Dependencias Node.js
+# --------------------------------------------
 node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# Expo
+# --------------------------------------------
+# 2. Expo y Metro
+# --------------------------------------------
 .expo/
 .expo-shared/
 dist/
 web-build/
+.metro-health-check*
 
-# Archivos generados
+# --------------------------------------------
+# 3. Archivos generados y temporales
+# --------------------------------------------
 *.tsbuildinfo
-*.map
 coverage/
+.nyc_output/
+.cache/
+tmp/
+temp/
+*.tmp
+*.bak
 *.log
 
-# Variables de entorno y credenciales
+# --------------------------------------------
+# 4. Variables de entorno y credenciales
+# --------------------------------------------
 .env
 .env.*
 !.env.example
+
 *.pem
 *.key
 *.p12
-
-# Base de datos SQLite local
-*.db
-*.db-journal
-*.db-shm
-*.db-wal
-*.sqlite
-*.sqlite3
-
-# Android e iOS generados por Expo Prebuild
-/android/
-/ios/
-
-# Compilaciones Android
-*.apk
-*.aab
 *.keystore
 *.jks
 
-# Archivos temporales
-tmp/
-temp/
-.cache/
-*.tmp
-*.bak
+# --------------------------------------------
+# 5. Bases de datos SQLite locales
+# --------------------------------------------
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
 
-# Sistema operativo
-.DS_Store
-Thumbs.db
-desktop.ini
+# --------------------------------------------
+# 6. Compilaciones Android y Expo
+# --------------------------------------------
+/android/
+/ios/
 
-# IDE
+*.apk
+*.aab
+
+# --------------------------------------------
+# 7. Configuración local de herramientas
+# --------------------------------------------
 .idea/
 *.iml
+
 .vscode/*
 !.vscode/extensions.json
 !.vscode/settings.json
 
-# Archivos de pruebas
-jest-cache/
-.nyc_output/
+# --------------------------------------------
+# 8. Archivos del sistema operativo
+# --------------------------------------------
+.DS_Store
+Thumbs.db
+desktop.ini
 
-# Archivos locales
+# --------------------------------------------
+# 9. Archivos locales de pruebas
+# --------------------------------------------
+jest-cache/
 *.local
+
+# --------------------------------------------
+# 10. Respaldos temporales
+# --------------------------------------------
+avicola-p1-respaldo/
+
+# Tipos generados automáticamente por Expo
+expo-env.d.ts
