@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ViewStyle, Pressable, AccessibilityRole } from 'react-native';
 import { Colors, BorderRadius, Spacing, Typography, Shadows } from '@/constants/theme';
 
 export type CardVariant = 'paper' | 'obsidian' | 'highlight' | 'muted';
@@ -10,6 +10,7 @@ interface CardProps {
   style?: ViewStyle | ViewStyle[] | undefined;
   onPress?: () => void;
   accessible?: boolean;
+  accessibilityRole?: AccessibilityRole;
   accessibilityLabel?: string;
   accessibilityHint?: string;
 }
@@ -20,6 +21,7 @@ export const Card: React.FC<CardProps> = ({
   style,
   onPress,
   accessible = true,
+  accessibilityRole,
   accessibilityLabel,
   accessibilityHint,
 }) => {
@@ -72,10 +74,10 @@ export const Card: React.FC<CardProps> = ({
       <Pressable
         onPress={onPress}
         accessible={accessible}
-        accessibilityRole="button"
+        accessibilityRole={accessibilityRole || 'button'}
         accessibilityLabel={accessibilityLabel}
         accessibilityHint={accessibilityHint}
-        style={({ pressed }) => [getContainerStyle(pressed), style]}
+        style={({ pressed }) => [getContainerStyle(pressed), style as ViewStyle]}
       >
         {children}
       </Pressable>
@@ -85,8 +87,9 @@ export const Card: React.FC<CardProps> = ({
   return (
     <View
       accessible={accessible}
+      accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
-      style={[getContainerStyle(), style]}
+      style={[getContainerStyle(), style as ViewStyle]}
     >
       {children}
     </View>
