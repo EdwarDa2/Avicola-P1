@@ -46,7 +46,7 @@ export const Card: React.FC<CardProps> = ({
           ...base,
           ...Shadows.md,
           backgroundColor: Colors.obsidian,
-          borderColor: '#2e2c2c',
+          borderColor: Colors.obsidianLight,
           borderWidth: 1,
         };
       case 'highlight':
@@ -54,8 +54,8 @@ export const Card: React.FC<CardProps> = ({
           ...base,
           ...Shadows.sm,
           backgroundColor: Colors.paper,
-          borderColor: Colors.primary,
-          borderWidth: 2,
+          borderColor: Colors.accent,
+          borderWidth: 1.5,
         };
       case 'muted':
         return {
@@ -127,7 +127,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <Text
             style={[
               styles.metricTitle,
-              { color: isDark ? Colors.ash : Colors.textMuted },
+              { color: isDark ? Colors.textLightMuted : Colors.textMuted },
             ]}
           >
             {title}
@@ -149,7 +149,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
           <Text
             style={[
               styles.metricUnit,
-              { color: isDark ? Colors.ash : Colors.textMuted },
+              { color: isDark ? Colors.textLightMuted : Colors.accent },
             ]}
           >
             {unit}
@@ -161,7 +161,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
         <Text
           style={[
             styles.metricSubtitle,
-            { color: isDark ? '#a8a6a3' : Colors.ash },
+            { color: isDark ? Colors.textLightMuted : Colors.ash },
           ]}
         >
           {subtitle}

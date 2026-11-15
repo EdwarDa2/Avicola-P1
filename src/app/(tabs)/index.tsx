@@ -1,26 +1,25 @@
-import React, { useState } from 'react';
+import { useApp } from '@/application/state/AppContext';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Modal,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
-import {
-  Card,
-  Button,
-  Badge,
-  EmptyState,
   AnimatedBasketItem,
   AnimatedMemberFigures,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
 } from '@/components';
-import { useApp } from '@/application/state/AppContext';
-import { Family } from '@/types';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+  Modal,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -180,53 +179,54 @@ export default function HomeScreen() {
           ))
         )}
 
-        {/* Módulos Complementarios (Widgets de Productividad Agritech) */}
-        <View style={styles.widgetsGrid}>
-          {/* Widget 1: Aporte Nutricional */}
-          <Card
-            style={styles.widgetCard}
-            onPress={() => router.push('/nutrients' as any)}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Ir al módulo de aporte de proteína"
-          >
-            <View style={[styles.widgetIconCircle, { backgroundColor: '#e0f2fe' }]}>
-              <Ionicons name="nutrition" size={24} color="#0284c7" />
-            </View>
-            <Text style={styles.widgetTitle}>Aporte de Proteína</Text>
-            <Text style={styles.widgetSub}>
-              M08 · Gramos estimados por porción
-            </Text>
-            <View style={styles.widgetArrowRow}>
-              <Text style={[styles.widgetActionText, { color: '#0284c7' }]}>
-                Calcular
-              </Text>
-              <Ionicons name="arrow-forward" size={14} color="#0284c7" />
-            </View>
-          </Card>
+        <View style={styles.toolsSection}>
+          <Text style={styles.sectionTitle}>Herramientas</Text>
+          <View style={styles.toolsList}>
+            <Pressable
+              onPress={() => router.push('/nutrients' as any)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Consultar aporte de proteína por porción"
+              style={({ pressed }) => [
+                styles.toolRow,
+                styles.toolRowDivider,
+                { opacity: pressed ? 0.65 : 1 },
+              ]}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="nutrition-outline" size={20} color={Colors.ink} />
+              </View>
+              <View style={styles.toolText}>
+                <Text style={styles.toolTitle}>Aporte de proteína</Text>
+                <Text style={styles.toolDescription}>
+                  Gramos estimados por porción.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.ash} />
+            </Pressable>
 
-          {/* Widget 2: Recursos de Producción */}
-          <Card
-            style={styles.widgetCard}
-            onPress={() => router.push('/resources' as any)}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel="Ir al módulo de recursos de producción"
-          >
-            <View style={[styles.widgetIconCircle, { backgroundColor: '#fef3c7' }]}>
-              <Ionicons name="leaf" size={24} color="#d97706" />
-            </View>
-            <Text style={styles.widgetTitle}>Alimento & Recursos</Text>
-            <Text style={styles.widgetSub}>
-              M07 · Estimación condicional V1
-            </Text>
-            <View style={styles.widgetArrowRow}>
-              <Text style={[styles.widgetActionText, { color: '#d97706' }]}>
-                Consultar
-              </Text>
-              <Ionicons name="arrow-forward" size={14} color="#d97706" />
-            </View>
-          </Card>
+            <Pressable
+              onPress={() => router.push('/resources' as any)}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel="Consultar alimento y recursos de los planes activos"
+              style={({ pressed }) => [
+                styles.toolRow,
+                { opacity: pressed ? 0.65 : 1 },
+              ]}
+            >
+              <View style={styles.toolIcon}>
+                <Ionicons name="leaf-outline" size={20} color={Colors.ink} />
+              </View>
+              <View style={styles.toolText}>
+                <Text style={styles.toolTitle}>Alimento y recursos</Text>
+                <Text style={styles.toolDescription}>
+                  Consulta lo disponible para tus planes activos.
+                </Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color={Colors.ash} />
+            </Pressable>
+          </View>
         </View>
 
         {/* Sección: Planes Recientes de la Familia */}
@@ -324,7 +324,7 @@ export default function HomeScreen() {
                         <Ionicons
                           name="checkmark-circle"
                           size={22}
-                          color={Colors.primaryDark}
+                          color={Colors.accent}
                         />
                       ) : (
                         <Ionicons
@@ -415,7 +415,7 @@ const styles = StyleSheet.create({
   changeFamilyBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#2b2929',
+    backgroundColor: Colors.obsidianLight,
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: BorderRadius.sm,
@@ -437,11 +437,11 @@ const styles = StyleSheet.create({
   },
   noFamilyText: {
     ...Typography.body,
-    color: Colors.ash,
+    color: Colors.textLightMuted,
     marginVertical: Spacing.sm,
   },
   coverageBox: {
-    backgroundColor: '#262424',
+    backgroundColor: Colors.obsidianLight,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginTop: Spacing.xs,
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
   },
   progressBarTrack: {
     height: 8,
-    backgroundColor: '#383535',
+    backgroundColor: Colors.borderDark,
     borderRadius: 4,
     overflow: 'hidden',
     marginVertical: 4,
@@ -478,7 +478,7 @@ const styles = StyleSheet.create({
   coverageFootnote: {
     ...Typography.caption,
     fontSize: 10,
-    color: Colors.ash,
+    color: Colors.textLightMuted,
     marginTop: 2,
   },
   newPlanBtn: {
@@ -504,44 +504,49 @@ const styles = StyleSheet.create({
     ...Typography.captionBold,
     color: Colors.ink,
   },
-  widgetsGrid: {
-    flexDirection: 'row',
-    gap: Spacing.md,
+  toolsSection: {
     marginVertical: Spacing.md,
   },
-  widgetCard: {
-    flex: 1,
-    padding: Spacing.md,
+  toolsList: {
+    backgroundColor: Colors.paper,
+    borderWidth: 1,
+    borderColor: Colors.hairline,
+    borderRadius: BorderRadius.lg,
+    paddingHorizontal: Spacing.md,
+    marginTop: Spacing.sm,
   },
-  widgetIconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: Spacing.sm,
-  },
-  widgetTitle: {
-    ...Typography.bodyBold,
-    color: Colors.ink,
-    fontSize: 14,
-  },
-  widgetSub: {
-    ...Typography.caption,
-    color: Colors.ash,
-    fontSize: 11,
-    marginTop: 2,
-    marginBottom: Spacing.sm,
-  },
-  widgetArrowRow: {
+  toolRow: {
+    minHeight: 72,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    marginTop: 'auto',
+    paddingVertical: Spacing.sm,
   },
-  widgetActionText: {
-    ...Typography.captionBold,
+  toolRowDivider: {
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.hairline,
+  },
+  toolIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.sm,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toolText: {
+    flex: 1,
+    marginLeft: Spacing.md,
+    marginRight: Spacing.sm,
+  },
+  toolTitle: {
+    ...Typography.bodyBold,
+    color: Colors.ink,
+  },
+  toolDescription: {
+    ...Typography.caption,
+    color: Colors.ash,
     fontSize: 12,
+    marginTop: 2,
   },
   recentPlansSection: {
     marginTop: Spacing.md,

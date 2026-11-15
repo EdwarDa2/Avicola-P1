@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
-import { Header, Card, Button, ProteinBar, Input } from '@/components';
-import { ProductCode } from '@/types';
-import { PRODUCTS, NUTRIENT_REFERENCES } from '@/domain/calculators/scenarios';
+import { Button, Card, Header, Input, ProteinBar } from '@/components';
+import { Colors, Spacing, Typography } from '@/constants/theme';
 import { calculateProteinGrams } from '@/domain/calculators';
+import { NUTRIENT_REFERENCES, PRODUCTS } from '@/domain/calculators/scenarios';
+import { ProductCode } from '@/types';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NutrientsScreen() {
   const router = useRouter();
@@ -147,7 +147,7 @@ const styles = StyleSheet.create({
   },
   refSource: {
     ...Typography.caption,
-    color: Colors.ash,
+    color: Colors.textLightMuted,
     fontSize: 12,
   },
 });

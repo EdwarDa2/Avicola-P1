@@ -1,27 +1,28 @@
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
-import {
-  Header,
-  Input,
-  Button,
-  AnimatedCounter,
-  AnimatedMemberFigures,
-  Card,
-  ConfirmModal,
-} from '@/components';
 import { useApp } from '@/application/state/AppContext';
-import { AgeGroupKey, AGE_GROUPS } from '@/types';
+import {
+    AnimatedCounter,
+    AnimatedMemberFigures,
+    Button,
+    Card,
+    ConfirmModal,
+    Header,
+    Input,
+} from '@/components';
+import { Colors, Spacing, Typography } from '@/constants/theme';
+import { AGE_GROUPS, AgeGroupKey } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function EditFamilyScreen() {
   const router = useRouter();
@@ -30,32 +31,27 @@ export default function EditFamilyScreen() {
 
   const currentFamily = families.find((f) => f.id === id);
 
-  const [name, setName] = useState('');
+  const [name, setName] = useState(currentFamily?.name ?? '');
   const [nameError, setNameError] = useState('');
-  const [ageCounts, setAgeCounts] = useState<Record<AgeGroupKey, number>>({
-    '0-3': 0,
-    '4-8': 0,
-    '9-13': 0,
-    '14-18': 0,
-    '19+': 0,
-  });
-  const [showArchiveModal, setShowArchiveModal] = useState(false);
-
-  useEffect(() => {
-    if (currentFamily) {
-      setName(currentFamily.name);
-      setAgeCounts(currentFamily.ageCounts);
+  const [ageCounts, setAgeCounts] = useState<Record<AgeGroupKey, number>>(
+    currentFamily?.ageCounts ?? {
+      '0-3': 0,
+      '4-8': 0,
+      '9-13': 0,
+      '14-18': 0,
+      '19+': 0,
     }
-  }, [currentFamily]);
+  );
+  const [showArchiveModal, setShowArchiveModal] = useState(false);
 
   if (!currentFamily) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <Header title="Editar Familia" showBack={true} />
+        <Header title="Editar familia" showBack={true} />
         <View style={styles.notFoundContainer}>
           <Text style={styles.notFoundTitle}>Familia no encontrada</Text>
           <Button
-            title="Regresar a Familias"
+            title="Volver a familias"
             onPress={() => router.back()}
             variant="secondary"
           />
@@ -105,7 +101,7 @@ export default function EditFamilyScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Editar Familia"
+        title="Editar familia"
         subtitle={currentFamily.name}
         showBack={true}
         onBack={() => router.back()}
@@ -116,12 +112,15 @@ export default function EditFamilyScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Tarjeta de Identificación */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Nombre de la familia</Text>
+            <Text style={styles.sectionTitle}>Perfil familiar</Text>
+            <Text style={styles.sectionSubtitle}>
+              Ponle un nombre fácil de reconocer.
+            </Text>
+
             <Input
-              label="Nombre identificador"
-              placeholder="Ej. Familia Morales"
+              label="Nombre de la familia"
+              placeholder="Ej. Familia García, Granja El Roble"
               value={name}
               onChangeText={(text) => {
                 setName(text);
@@ -133,29 +132,30 @@ export default function EditFamilyScreen() {
             />
           </Card>
 
-          {/* Tarjeta de Resumen en Vivo */}
           <Card variant="obsidian" style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <View>
-                <Text style={styles.summaryLabel}>TOTAL DE INTEGRANTES</Text>
-                <Text style={styles.summarySub}>
-                  {totalMembers === 1 ? '1 persona registrada' : `${totalMembers} personas registradas`}
-                </Text>
+                <Text style={styles.summaryLabel}>Integrantes</Text>
+                <View style={styles.summaryValueRow}>
+                  <Text style={styles.totalNumber}>{totalMembers}</Text>
+                  <Text style={styles.summaryUnit}>
+                    {totalMembers === 1 ? 'persona' : 'personas'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.totalBadge}>
-                <Text style={styles.totalNumber}>{totalMembers}</Text>
-              </View>
+              <Ionicons name="people-outline" size={24} color={Colors.primary} />
             </View>
+            {totalMembers > 0 && (
+              <View style={styles.memberPreview}>
+                <AnimatedMemberFigures ageCounts={ageCounts} variant="compact" />
+              </View>
+            )}
           </Card>
 
-          {/* FIGURAS ANIMADAS DE INTEGRANTES (RF-51 & CP-23) */}
-          <AnimatedMemberFigures ageCounts={ageCounts} variant="detailed" />
-
-          {/* Sección de Integrantes por Grupos de Edad */}
           <View style={styles.ageSectionHeader}>
-            <Text style={styles.sectionTitle}>Composición familiar</Text>
+            <Text style={styles.sectionTitle}>Integrantes por edad</Text>
             <Text style={styles.sectionSubtitle}>
-              Actualizar la composición no altera los planes y cálculos calculados previamente (RF-02).
+              Los cambios no modifican los planes guardados.
             </Text>
           </View>
 
@@ -170,10 +170,9 @@ export default function EditFamilyScreen() {
             />
           ))}
 
-          {/* Acciones principales */}
           <View style={styles.actionsContainer}>
             <Button
-              title="Guardar Cambios"
+              title="Guardar cambios"
               onPress={handleSave}
               variant="primary"
               style={styles.saveButton}
@@ -181,14 +180,14 @@ export default function EditFamilyScreen() {
 
             {currentFamily.archived ? (
               <Button
-                title="Restaurar Familia"
+                title="Restaurar familia"
                 onPress={handleRestore}
                 variant="secondary"
                 style={styles.archiveButton}
               />
             ) : (
               <Button
-                title="Archivar Familia"
+                title="Archivar familia"
                 onPress={() => setShowArchiveModal(true)}
                 variant="danger"
                 style={styles.archiveButton}
@@ -198,11 +197,10 @@ export default function EditFamilyScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Modal de confirmación para archivar (RF-04) */}
       <ConfirmModal
         visible={showArchiveModal}
         title="¿Archivar familia?"
-        message="La familia se ocultará de la lista activa, pero todos sus planes guardados permanecerán seguros y podrás restaurarla en cualquier momento."
+        message="La familia dejará de aparecer en la lista activa. Sus planes se conservarán y podrás restaurarla después."
         confirmText="Archivar"
         cancelText="Cancelar"
         destructive={true}
@@ -249,30 +247,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryLabel: {
-    ...Typography.captionBold,
-    color: Colors.primary,
-    letterSpacing: 0.8,
-  },
-  summarySub: {
-    ...Typography.body,
+    ...Typography.bodyBold,
     color: Colors.paper,
-    marginTop: 2,
   },
-  totalBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  summaryValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: Spacing.xs,
   },
   totalNumber: {
-    ...Typography.numberDisplay,
-    fontSize: 22,
-    lineHeight: 28,
-    color: Colors.ink,
+    ...Typography.numberDisplayLarge,
+    fontSize: 34,
+    lineHeight: 38,
+  },
+  summaryUnit: {
+    ...Typography.caption,
+    color: Colors.textLightMuted,
+    marginLeft: Spacing.xs,
+  },
+  memberPreview: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.obsidianLight,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
   },
   ageSectionHeader: {
+    marginTop: Spacing.xs,
     marginBottom: Spacing.sm,
   },
   actionsContainer: {

@@ -1,6 +1,6 @@
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import React from 'react';
-import { View, Text, StyleSheet, ViewStyle, TextStyle } from 'react-native';
-import { Colors, BorderRadius, Spacing, Typography } from '@/constants/theme';
+import { StyleSheet, Text, TextStyle, View, ViewStyle } from 'react-native';
 
 export type BadgeVariant =
   | 'primary'
@@ -45,7 +45,7 @@ export const Badge: React.FC<BadgeProps> = ({
       case 'obsidian':
         return {
           backgroundColor: Colors.obsidian,
-          borderColor: '#2e2c2c',
+          borderColor: Colors.obsidianLight,
         };
       case 'warning':
         return {

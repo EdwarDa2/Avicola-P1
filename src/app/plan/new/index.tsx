@@ -1,83 +1,101 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
-import { Header, Card, Badge } from '@/components';
+import { useApp } from '@/application/state/AppContext';
+import { Header } from '@/components';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCT_LIST } from '@/domain/calculators/scenarios';
 import { ProductCode } from '@/types';
-import { useApp } from '@/application/state/AppContext';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SelectProductScreen() {
   const router = useRouter();
   const { activeFamily } = useApp();
+  const productGroups = [
+    { title: 'Huevos', products: PRODUCT_LIST.filter((product) => product.purpose === 'eggs') },
+    { title: 'Carne', products: PRODUCT_LIST.filter((product) => product.purpose === 'meat') },
+  ];
 
   const handleSelectProduct = (code: ProductCode) => {
     // En la siguiente rama se conectará con el wizard completo: consume -> scenario -> result
     router.push(`/history` as any);
   };
 
+  const getUnitLabel = (product: (typeof PRODUCT_LIST)[number]) =>
+    product.purpose === 'eggs'
+      ? `Huevos por ${product.periodUnit}`
+      : `kg de carne cocida por ${product.periodUnit}`;
+
+  const getOptionLabel = (product: (typeof PRODUCT_LIST)[number]) => {
+    if (product.hasBreedingOption) return 'Reproducción opcional';
+    if (product.hasLotsOption) return 'Organización por lotes';
+    return null;
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Nuevo Plan"
-        subtitle={`Familia: ${activeFamily ? activeFamily.name : 'No seleccionada'}`}
+        title="Planificar"
+        subtitle={activeFamily ? `Familia: ${activeFamily.name}` : 'Sin familia seleccionada'}
         showBack={true}
         onBack={() => router.back()}
       />
 
       <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.stepIndicator}>
-          <Badge label="PASO 1 DE 4" variant="primary" size="sm" />
-          <Text style={styles.stepTitle}>Selecciona el producto a planificar</Text>
-          <Text style={styles.stepSubtitle}>
-            Cada producto tiene su propio modelo matemático oficial para autoconsumo.
-          </Text>
+        <View style={styles.intro}>
+          <Text style={styles.title}>¿Qué quieres planificar?</Text>
+          <Text style={styles.subtitle}>Elige un producto para continuar.</Text>
         </View>
 
-        {PRODUCT_LIST.map((prod) => (
-          <Pressable
-            key={prod.code}
-            onPress={() => handleSelectProduct(prod.code)}
-            accessible={true}
-            accessibilityRole="button"
-            accessibilityLabel={`Planificar ${prod.name}. ${prod.description}`}
-            style={({ pressed }) => [styles.productCard, { opacity: pressed ? 0.92 : 1 }]}
-          >
-            <View style={[styles.colorStrip, { backgroundColor: prod.color }]} />
-            <View style={styles.cardContent}>
-              <View style={styles.cardTopRow}>
-                <View>
-                  <Text style={styles.productSpecies}>{prod.species}</Text>
-                  <Text style={styles.productName}>{prod.name}</Text>
-                </View>
-                <View style={[styles.iconCircle, { backgroundColor: Colors.bone }]}>
-                  <Ionicons
-                    name={prod.purpose === 'eggs' ? 'egg-outline' : 'restaurant-outline'}
-                    size={24}
-                    color={prod.color}
-                  />
-                </View>
-              </View>
+        {productGroups.map((group) => (
+          <View key={group.title} style={styles.productGroup}>
+            <Text style={styles.groupTitle}>{group.title}</Text>
 
-              <Text style={styles.productDesc}>{prod.description}</Text>
+            {group.products.map((prod) => {
+              const optionLabel = getOptionLabel(prod);
 
-              <View style={styles.cardBottomRow}>
-                <Badge
-                  label={`Unidad: ${prod.unit} / ${prod.periodUnit}`}
-                  variant="muted"
-                  size="sm"
-                />
-                {prod.hasBreedingOption && (
-                  <Badge label="Reproducción opcional" variant="primary" size="sm" />
-                )}
-                {prod.hasLotsOption && (
-                  <Badge label="Lotes opcionales" variant="outline" size="sm" />
-                )}
-              </View>
-            </View>
-          </Pressable>
+              return (
+                <Pressable
+                  key={prod.code}
+                  onPress={() => handleSelectProduct(prod.code)}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Planificar ${prod.name}. ${prod.description}`}
+                  style={({ pressed }) => [
+                    styles.productCard,
+                    { opacity: pressed ? 0.72 : 1 },
+                  ]}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.productIcon}>
+                      <Ionicons
+                        name={prod.purpose === 'eggs' ? 'egg-outline' : 'restaurant-outline'}
+                        size={19}
+                        color={Colors.ink}
+                      />
+                    </View>
+                    <View style={styles.productHeading}>
+                      <Text style={styles.productName}>{prod.name}</Text>
+                      <Text style={styles.productSpecies}>{prod.species}</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={Colors.ash} />
+                  </View>
+
+                  <Text style={styles.productDescription}>{prod.description}</Text>
+
+                  <View style={styles.productDetails}>
+                    <Text style={styles.productUnit}>{getUnitLabel(prod)}</Text>
+                    {optionLabel && (
+                      <>
+                        <View style={styles.detailSeparator} />
+                        <Text style={styles.productOption}>{optionLabel}</Text>
+                      </>
+                    )}
+                  </View>
+                </Pressable>
+              );
+            })}
+          </View>
         ))}
       </ScrollView>
     </SafeAreaView>
@@ -93,70 +111,87 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingBottom: Spacing.huge,
   },
-  stepIndicator: {
+  intro: {
+    marginTop: Spacing.sm,
     marginBottom: Spacing.lg,
   },
-  stepTitle: {
-    ...Typography.h2,
-    color: Colors.ink,
+  title: {
+    ...Typography.h1,
+    fontSize: 26,
+    lineHeight: 32,
+  },
+  subtitle: {
+    ...Typography.body,
+    color: Colors.ash,
     marginTop: Spacing.xs,
   },
-  stepSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    lineHeight: 18,
-    marginTop: 2,
+  productGroup: {
+    marginBottom: Spacing.lg,
+  },
+  groupTitle: {
+    ...Typography.h3,
+    color: Colors.ink,
+    marginBottom: Spacing.sm,
   },
   productCard: {
     backgroundColor: Colors.paper,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
     borderColor: Colors.hairline,
-    marginBottom: Spacing.md,
-    overflow: 'hidden',
-    ...Shadows.sm,
-  },
-  colorStrip: {
-    height: 4,
-    width: '100%',
-  },
-  cardContent: {
-    padding: Spacing.lg,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    padding: Spacing.md,
     marginBottom: Spacing.sm,
   },
-  productSpecies: {
-    ...Typography.captionBold,
-    color: Colors.ash,
-    fontSize: 11,
-    fontStyle: 'italic',
+  cardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
-  productName: {
-    ...Typography.h3,
-    color: Colors.ink,
-    fontSize: 18,
-    marginTop: 2,
-  },
-  iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+  productIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  productDesc: {
-    ...Typography.body,
-    color: Colors.ash,
-    lineHeight: 20,
-    marginBottom: Spacing.md,
+  productHeading: {
+    flex: 1,
+    marginLeft: Spacing.md,
   },
-  cardBottomRow: {
+  productName: {
+    ...Typography.bodyBold,
+    color: Colors.ink,
+  },
+  productSpecies: {
+    ...Typography.caption,
+    color: Colors.ash,
+    fontSize: 11,
+    marginTop: 1,
+  },
+  productDescription: {
+    ...Typography.caption,
+    color: Colors.textMuted,
+    lineHeight: 18,
+    marginTop: Spacing.md,
+  },
+  productDetails: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
-    gap: Spacing.xs,
+    marginTop: Spacing.md,
+  },
+  productUnit: {
+    ...Typography.captionBold,
+    color: Colors.ink,
+  },
+  detailSeparator: {
+    width: 3,
+    height: 3,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.ash,
+    marginHorizontal: Spacing.sm,
+  },
+  productOption: {
+    ...Typography.caption,
+    color: Colors.ash,
   },
 });

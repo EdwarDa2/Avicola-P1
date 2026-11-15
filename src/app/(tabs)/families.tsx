@@ -1,25 +1,25 @@
-import React, { useState } from 'react';
+import { useApp } from '@/application/state/AppContext';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
+    AnimatedMemberFigures,
+    Badge,
+    Button,
+    Card,
+    ConfirmModal,
+    EmptyState,
+} from '@/components';
+import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
+import { Family } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
-import {
-  Card,
-  Button,
-  Badge,
-  EmptyState,
-  ConfirmModal,
-  AnimatedMemberFigures,
-} from '@/components';
-import { useApp } from '@/application/state/AppContext';
-import { Family } from '@/types';
 
 export default function FamiliesScreen() {
   const router = useRouter();
@@ -49,21 +49,23 @@ export default function FamiliesScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Cabecera Agritech */}
         <View style={styles.headerRow}>
           <View style={styles.headerTextCol}>
-            <Text style={styles.headerSubtitle}>MÓDULO M01</Text>
-            <Text style={styles.headerTitle}>Perfiles Familiares</Text>
+            <Text style={styles.headerSubtitle}>TUS PERFILES</Text>
+            <Text style={styles.headerTitle}>Mis familias</Text>
+            <Text style={styles.headerDescription}>
+              Organiza los hogares de tus planes.
+            </Text>
           </View>
           <Button
-            title="+ Nueva Familia"
+            title="Nueva"
+            icon={<Ionicons name="add" size={18} color={Colors.ink} />}
             onPress={() => router.push('/family/new' as any)}
             variant="primary"
             style={styles.addButton}
           />
         </View>
 
-        {/* Pestañas de filtrado: Activas vs Archivadas */}
         <View style={styles.tabsRow}>
           <Pressable
             onPress={() => setFilterTab('active')}
@@ -79,7 +81,7 @@ export default function FamiliesScreen() {
                 filterTab === 'active' && styles.tabButtonTextActive,
               ]}
             >
-              Activas ({activeFamilies.length})
+              Activas · {activeFamilies.length}
             </Text>
           </Pressable>
 
@@ -97,7 +99,7 @@ export default function FamiliesScreen() {
                 filterTab === 'archived' && styles.tabButtonTextActive,
               ]}
             >
-              Archivadas ({archivedFamilies.length})
+              Archivadas · {archivedFamilies.length}
             </Text>
           </Pressable>
         </View>
@@ -113,10 +115,10 @@ export default function FamiliesScreen() {
             }
             description={
               filterTab === 'active'
-                ? 'Registra tu primera familia para comenzar a planificar producción de huevo y carne.'
-                : 'Las familias que archives se mostrarán aquí para que puedas restaurarlas cuando lo desees.'
+                ? 'Crea un perfil para empezar a organizar tus planes.'
+                : 'Las familias archivadas aparecerán aquí y podrás restaurarlas cuando las necesites.'
             }
-            actionTitle={filterTab === 'active' ? 'Crear Primera Familia' : undefined}
+            actionTitle={filterTab === 'active' ? 'Crear familia' : undefined}
             onAction={filterTab === 'active' ? () => router.push('/family/new' as any) : undefined}
           />
         ) : (
@@ -133,20 +135,19 @@ export default function FamiliesScreen() {
                 variant={isActive ? 'highlight' : 'paper'}
                 style={styles.familyCard}
               >
-                {/* Cabecera de la tarjeta */}
                 <View style={styles.cardHeader}>
                   <View style={styles.cardTitleCol}>
                     <View style={styles.badgeRow}>
                       {isActive && (
                         <Badge
-                          label="ACTIVA"
+                          label="Activa"
                           variant="primary"
                           style={styles.activeBadge}
                         />
                       )}
                       {family.archived && (
                         <Badge
-                          label="ARCHIVADA"
+                          label="Archivada"
                           variant="muted"
                           style={styles.activeBadge}
                         />
@@ -165,12 +166,11 @@ export default function FamiliesScreen() {
                   )}
                 </View>
 
-                {/* Métricas e Figuras Animadas de la Familia (CP-23) */}
                 <View style={styles.metricsContainer}>
                   <View style={styles.totalBlock}>
                     <Text style={styles.totalNumber}>{totalMembers}</Text>
                     <Text style={styles.totalLabel}>
-                      {totalMembers === 1 ? 'PERSONA' : 'PERSONAS'}
+                      {totalMembers === 1 ? 'persona' : 'personas'}
                     </Text>
                   </View>
 
@@ -182,7 +182,6 @@ export default function FamiliesScreen() {
                   </View>
                 </View>
 
-                {/* Barra de Acciones */}
                 <View style={styles.cardActions}>
                   <Pressable
                     onPress={() =>
@@ -199,7 +198,7 @@ export default function FamiliesScreen() {
                       { opacity: pressed ? 0.7 : 1 },
                     ]}
                   >
-                    <Ionicons name="create-outline" size={18} color={Colors.ink} />
+                    <Ionicons name="create-outline" size={18} color={Colors.accent} />
                     <Text style={styles.actionText}>Editar perfil</Text>
                   </Pressable>
 
@@ -243,7 +242,6 @@ export default function FamiliesScreen() {
         )}
       </ScrollView>
 
-      {/* Modal de confirmación para archivar */}
       <ConfirmModal
         visible={familyToArchive !== null}
         title="¿Archivar familia?"
@@ -278,7 +276,7 @@ const styles = StyleSheet.create({
   },
   headerSubtitle: {
     ...Typography.captionBold,
-    color: Colors.ash,
+    color: Colors.accent,
     letterSpacing: 0.8,
   },
   headerTitle: {
@@ -287,9 +285,14 @@ const styles = StyleSheet.create({
     fontSize: 24,
     marginTop: 2,
   },
+  headerDescription: {
+    ...Typography.caption,
+    color: Colors.ash,
+    marginTop: 2,
+  },
   addButton: {
     minHeight: 44,
-    paddingHorizontal: Spacing.md,
+    paddingHorizontal: Spacing.sm,
   },
   tabsRow: {
     flexDirection: 'row',
@@ -347,7 +350,7 @@ const styles = StyleSheet.create({
   },
   metricsContainer: {
     flexDirection: 'row',
-    backgroundColor: Colors.bone,
+    backgroundColor: Colors.boneDark,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     alignItems: 'center',
@@ -365,13 +368,12 @@ const styles = StyleSheet.create({
     ...Typography.numberDisplay,
     fontSize: 26,
     lineHeight: 30,
-    color: Colors.ink,
+    color: Colors.accent,
   },
   totalLabel: {
     ...Typography.captionBold,
-    fontSize: 9,
+    fontSize: 11,
     color: Colors.ash,
-    letterSpacing: 0.5,
     marginTop: 2,
   },
   figuresWrapper: {

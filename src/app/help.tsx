@@ -1,9 +1,8 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Badge, Card, Header } from '@/components';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
-import { Header, Card, Badge } from '@/components';
+import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function HelpScreen() {
   const router = useRouter();
@@ -120,7 +119,7 @@ const styles = StyleSheet.create({
   },
   heroText: {
     ...Typography.body,
-    color: Colors.ash,
+    color: Colors.textLightMuted,
     lineHeight: 20,
   },
   sectionHeader: {
