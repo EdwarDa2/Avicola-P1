@@ -17,8 +17,8 @@ import {
   Input,
   Button,
   AnimatedCounter,
+  AnimatedMemberFigures,
   Card,
-  Badge,
 } from '@/components';
 import { useApp } from '@/application/state/AppContext';
 import { AgeGroupKey, AGE_GROUPS } from '@/types';
@@ -119,6 +119,9 @@ export default function NewFamilyScreen() {
             </View>
           </Card>
 
+          {/* FIGURAS ANIMADAS DE INTEGRANTES (RF-51 & CP-23) */}
+          <AnimatedMemberFigures ageCounts={ageCounts} variant="detailed" />
+
           {/* Sección de Integrantes por Grupos de Edad */}
           <View style={styles.ageSectionHeader}>
             <Text style={styles.sectionTitle}>Composición por grupos de edad</Text>
@@ -188,7 +191,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     padding: Spacing.lg,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   summaryRow: {
     flexDirection: 'row',

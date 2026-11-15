@@ -16,6 +16,7 @@ import {
   Input,
   Button,
   AnimatedCounter,
+  AnimatedMemberFigures,
   Card,
   ConfirmModal,
 } from '@/components';
@@ -147,6 +148,9 @@ export default function EditFamilyScreen() {
             </View>
           </Card>
 
+          {/* FIGURAS ANIMADAS DE INTEGRANTES (RF-51 & CP-23) */}
+          <AnimatedMemberFigures ageCounts={ageCounts} variant="detailed" />
+
           {/* Sección de Integrantes por Grupos de Edad */}
           <View style={styles.ageSectionHeader}>
             <Text style={styles.sectionTitle}>Composición familiar</Text>
@@ -237,7 +241,7 @@ const styles = StyleSheet.create({
   },
   summaryCard: {
     padding: Spacing.lg,
-    marginBottom: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   summaryRow: {
     flexDirection: 'row',

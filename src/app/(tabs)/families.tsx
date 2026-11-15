@@ -10,7 +10,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, Typography, BorderRadius, Shadows } from '@/constants/theme';
-import { Card, Button, Badge, EmptyState, ConfirmModal } from '@/components';
+import {
+  Card,
+  Button,
+  Badge,
+  EmptyState,
+  ConfirmModal,
+  AnimatedMemberFigures,
+} from '@/components';
 import { useApp } from '@/application/state/AppContext';
 import { Family } from '@/types';
 
@@ -158,51 +165,20 @@ export default function FamiliesScreen() {
                   )}
                 </View>
 
-                {/* Métricas de Integrantes (Dashboard style) */}
+                {/* Métricas e Figuras Animadas de la Familia (CP-23) */}
                 <View style={styles.metricsContainer}>
                   <View style={styles.totalBlock}>
                     <Text style={styles.totalNumber}>{totalMembers}</Text>
                     <Text style={styles.totalLabel}>
-                      {totalMembers === 1 ? 'INTEGRANTE' : 'INTEGRANTES'}
+                      {totalMembers === 1 ? 'PERSONA' : 'PERSONAS'}
                     </Text>
                   </View>
 
-                  <View style={styles.chipsContainer}>
-                    {family.ageCounts['19+'] > 0 && (
-                      <View style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {family.ageCounts['19+']} adultos (19+)
-                        </Text>
-                      </View>
-                    )}
-                    {family.ageCounts['14-18'] > 0 && (
-                      <View style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {family.ageCounts['14-18']} adolescentes
-                        </Text>
-                      </View>
-                    )}
-                    {family.ageCounts['9-13'] > 0 && (
-                      <View style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {family.ageCounts['9-13']} niños (9-13)
-                        </Text>
-                      </View>
-                    )}
-                    {family.ageCounts['4-8'] > 0 && (
-                      <View style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {family.ageCounts['4-8']} infantes (4-8)
-                        </Text>
-                      </View>
-                    )}
-                    {family.ageCounts['0-3'] > 0 && (
-                      <View style={styles.chip}>
-                        <Text style={styles.chipText}>
-                          {family.ageCounts['0-3']} primera infancia (0-3)
-                        </Text>
-                      </View>
-                    )}
+                  <View style={styles.figuresWrapper}>
+                    <AnimatedMemberFigures
+                      ageCounts={family.ageCounts}
+                      variant="compact"
+                    />
                   </View>
                 </View>
 
@@ -398,25 +374,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginTop: 2,
   },
-  chipsContainer: {
+  figuresWrapper: {
     flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 4,
     paddingLeft: Spacing.md,
-  },
-  chip: {
-    backgroundColor: Colors.paper,
-    borderWidth: 1,
-    borderColor: Colors.hairline,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-  },
-  chipText: {
-    ...Typography.caption,
-    fontSize: 11,
-    color: Colors.ash,
+    justifyContent: 'center',
   },
   cardActions: {
     flexDirection: 'row',
