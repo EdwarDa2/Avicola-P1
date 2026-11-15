@@ -1,25 +1,24 @@
-/**
- * Sistema de Diseño — Propuesta Violet UI Studio (Decisión de Diseño Adoptada)
- * Tokens de color, tipografía, espaciados y sombras.
- */
+/** Sistema visual claro con superficies negras y acentos lima. */
 
 export const Colors = {
-  // Paleta principal acordada
-  primary: '#e4f222',        // Highlighter Yellow: CTA, progreso, acento activo
+  primary: '#e4f222',
   primaryDark: '#c8d415',
-  ink: '#0c0a08',            // Ink: texto principal, iconos oscuros, texto sobre CTA
-  obsidian: '#1a1919',       // Obsidian: tarjetas de resultado destacado, navegación, fondos oscuros
+  accent: '#0c0a08',
+  accentLight: '#f4f2f0',
+  ink: '#0c0a08',
+  obsidian: '#1a1919',
   obsidianLight: '#262424',
-  paper: '#ffffff',          // Paper: tarjetas de contenido, controles, modales
-  bone: '#f4f2f0',           // Bone: fondo general de pantallas
+  paper: '#ffffff',
+  bone: '#f4f2f0',
   boneDark: '#eae6e2',
-  ash: '#6d6c6b',            // Ash: texto secundario, unidades, subtítulos
-  hairline: '#e5e7eb',       // Hairline: bordes finos, separadores
-  smoke: '#d3d3d3',          // Smoke: estados suaves, bordes inactivos
+  ash: '#6d6c6b',
+  textLightMuted: '#a8a6a3',
+  hairline: '#e5e7eb',
+  borderDark: '#3a3838',
+  smoke: '#d3d3d3',
   disabled: '#d3d3d3',
   textMuted: '#6d6c6b',
   
-  // Feedback semántico
   danger: '#d32f2f',
   dangerLight: '#ffebee',
   success: '#2e7d32',
@@ -29,7 +28,6 @@ export const Colors = {
   info: '#0288d1',
   infoLight: '#e1f5fe',
 
-  // Acentos por producto
   productHenEggs: '#f59e0b',
   productChickenMeat: '#ef4444',
   productQuailEggs: '#8b5cf6',
@@ -115,21 +113,21 @@ export const Typography = {
 
 export const Shadows = {
   sm: {
-    shadowColor: '#000',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.05,
     shadowRadius: 2,
     elevation: 1,
   },
   md: {
-    shadowColor: '#000',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 2,
   },
   lg: {
-    shadowColor: '#000',
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.12,
     shadowRadius: 8,

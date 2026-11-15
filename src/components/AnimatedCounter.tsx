@@ -1,14 +1,13 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withSpring,
-  withTiming,
-} from 'react-native-reanimated';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, BorderRadius, Spacing, Typography } from '@/constants/theme';
 import { useApp } from '@/application/state/AppContext';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring
+} from 'react-native-reanimated';
 
 interface AnimatedCounterProps {
   label: string;
@@ -66,18 +65,11 @@ export const AnimatedCounter: React.FC<AnimatedCounterProps> = ({
   return (
     <View style={styles.card}>
       <View style={styles.infoContainer}>
-        <View style={styles.labelRow}>
-          <Text style={styles.label}>{label}</Text>
-          {isSpecialChildGroup && (
-            <View style={styles.specialBadge}>
-              <Text style={styles.specialBadgeText}>0-3 años</Text>
-            </View>
-          )}
-        </View>
+        <Text style={styles.label}>{label}</Text>
         <Text style={styles.ageRange}>{ageRange}</Text>
         {isSpecialChildGroup && (
           <Text style={styles.specialNote}>
-            Sin porciones predeterminadas sugeridas (D-03).
+            La porción queda a criterio de la familia.
           </Text>
         )}
       </View>
@@ -153,10 +145,6 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingRight: Spacing.md,
   },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
   label: {
     ...Typography.bodyBold,
     color: Colors.ink,
@@ -167,23 +155,10 @@ const styles = StyleSheet.create({
     color: Colors.ash,
     marginTop: 2,
   },
-  specialBadge: {
-    backgroundColor: Colors.boneDark,
-    borderRadius: BorderRadius.sm,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginLeft: Spacing.xs,
-  },
-  specialBadgeText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: Colors.ash,
-  },
   specialNote: {
     ...Typography.caption,
     fontSize: 11,
     color: Colors.ash,
-    fontStyle: 'italic',
     marginTop: 2,
   },
   controlsRow: {

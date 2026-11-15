@@ -1,27 +1,27 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  KeyboardAvoidingView,
-  Platform,
-  Alert,
-} from 'react-native';
-import { useRouter } from 'expo-router';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
-import {
-  Header,
-  Input,
-  Button,
-  AnimatedCounter,
-  AnimatedMemberFigures,
-  Card,
-} from '@/components';
 import { useApp } from '@/application/state/AppContext';
-import { AgeGroupKey, AGE_GROUPS } from '@/types';
+import {
+    AnimatedCounter,
+    AnimatedMemberFigures,
+    Button,
+    Card,
+    Header,
+    Input,
+} from '@/components';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import { AGE_GROUPS, AgeGroupKey } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { useState } from 'react';
+import {
+    Alert,
+    KeyboardAvoidingView,
+    Platform,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function NewFamilyScreen() {
   const router = useRouter();
@@ -71,8 +71,8 @@ export default function NewFamilyScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Nueva Familia"
-        subtitle="Registrar perfil familiar"
+        title="Nueva familia"
+        subtitle="Perfil para tus planes"
         showBack={true}
         onBack={() => router.back()}
       />
@@ -82,16 +82,15 @@ export default function NewFamilyScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* Tarjeta de Identificación */}
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Identificación del perfil</Text>
+            <Text style={styles.sectionTitle}>Perfil familiar</Text>
             <Text style={styles.sectionSubtitle}>
-              Asigna un nombre reconocible para este grupo familiar o unidad de traspatio.
+              Ponle un nombre fácil de reconocer.
             </Text>
 
             <Input
-              label="Nombre de la familia o unidad"
-              placeholder="Ej. Familia Morales, Granja El Roble..."
+              label="Nombre de la familia"
+              placeholder="Ej. Familia García, Granja El Roble"
               value={name}
               onChangeText={(text) => {
                 setName(text);
@@ -99,34 +98,34 @@ export default function NewFamilyScreen() {
               }}
               error={nameError}
               required={true}
-              autoFocus={true}
               maxLength={40}
             />
           </Card>
 
-          {/* Tarjeta de Resumen en Vivo de Integrantes */}
           <Card variant="obsidian" style={styles.summaryCard}>
             <View style={styles.summaryRow}>
               <View>
-                <Text style={styles.summaryLabel}>TOTAL DE INTEGRANTES</Text>
-                <Text style={styles.summarySub}>
-                  {totalMembers === 1 ? '1 persona registrada' : `${totalMembers} personas registradas`}
-                </Text>
+                <Text style={styles.summaryLabel}>Integrantes</Text>
+                <View style={styles.summaryValueRow}>
+                  <Text style={styles.totalNumber}>{totalMembers}</Text>
+                  <Text style={styles.summaryUnit}>
+                    {totalMembers === 1 ? 'persona' : 'personas'}
+                  </Text>
+                </View>
               </View>
-              <View style={styles.totalBadge}>
-                <Text style={styles.totalNumber}>{totalMembers}</Text>
-              </View>
+              <Ionicons name="people-outline" size={24} color={Colors.primary} />
             </View>
+            {totalMembers > 0 && (
+              <View style={styles.memberPreview}>
+                <AnimatedMemberFigures ageCounts={ageCounts} variant="compact" />
+              </View>
+            )}
           </Card>
 
-          {/* FIGURAS ANIMADAS DE INTEGRANTES (RF-51 & CP-23) */}
-          <AnimatedMemberFigures ageCounts={ageCounts} variant="detailed" />
-
-          {/* Sección de Integrantes por Grupos de Edad */}
           <View style={styles.ageSectionHeader}>
-            <Text style={styles.sectionTitle}>Composición por grupos de edad</Text>
+            <Text style={styles.sectionTitle}>Integrantes por edad</Text>
             <Text style={styles.sectionSubtitle}>
-              Los consumos y necesidades nutricionales varían según la etapa de vida (D-03).
+              Indica cuántas personas hay en cada rango.
             </Text>
           </View>
 
@@ -141,18 +140,15 @@ export default function NewFamilyScreen() {
             />
           ))}
 
-          {/* Nota de Trazabilidad y Privacidad (D-03, RNF-04) */}
           <View style={styles.privacyNote}>
-            <Ionicons name="shield-checkmark-outline" size={18} color={Colors.ash} />
+            <Ionicons name="lock-closed-outline" size={16} color={Colors.accent} />
             <Text style={styles.privacyText}>
-              Minimización de datos (RNF-04): No se solicitan nombres individuales ni datos
-              personales. Toda la información permanece exclusivamente en este dispositivo offline.
+              No pedimos datos personales. El perfil se guarda en este dispositivo.
             </Text>
           </View>
 
-          {/* Botón de Guardado */}
           <Button
-            title="Guardar y Seleccionar Familia"
+            title="Guardar y seleccionar familia"
             onPress={handleSave}
             variant="primary"
             style={styles.saveButton}
@@ -199,30 +195,32 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   summaryLabel: {
-    ...Typography.captionBold,
-    color: Colors.primary,
-    letterSpacing: 0.8,
-  },
-  summarySub: {
-    ...Typography.body,
+    ...Typography.bodyBold,
     color: Colors.paper,
-    marginTop: 2,
   },
-  totalBadge: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
+  summaryValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    marginTop: Spacing.xs,
   },
   totalNumber: {
-    ...Typography.numberDisplay,
-    fontSize: 22,
-    lineHeight: 28,
-    color: Colors.ink,
+    ...Typography.numberDisplayLarge,
+    fontSize: 34,
+    lineHeight: 38,
+  },
+  summaryUnit: {
+    ...Typography.caption,
+    color: Colors.textLightMuted,
+    marginLeft: Spacing.xs,
+  },
+  memberPreview: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.obsidianLight,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
   },
   ageSectionHeader: {
+    marginTop: Spacing.xs,
     marginBottom: Spacing.sm,
   },
   privacyNote: {
