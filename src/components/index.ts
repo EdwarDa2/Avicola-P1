@@ -8,4 +8,4 @@ export * from './ConfirmModal';
 export * from './AnimatedCounter';
 export * from './AnimatedBasketItem';
 export * from './ProteinBar';
-
+export * from './AnimatedMemberFigures';
