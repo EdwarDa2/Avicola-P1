@@ -157,6 +157,20 @@ describe('D-11 · con demanda 0 el resultado es 0 antes de validar parámetros',
     assert.equal(layingFemalesCore(0, { layingRate: 2, utilizationRate: -1, safetyMargin: -5 }), 0);
   });
 
+  test('F05/F06 con M_año = 0 e Y = 0 → 0/0 (CP-14 no bloquea sin demanda)', () => {
+    assert.deepEqual(meatBirdsCore(0, { meatYieldKg: 0, mortalityRate: 0.05, safetyMargin: 0.1 }), {
+      slaughterBirds: 0,
+      initialBirds: 0,
+    });
+  });
+
+  test('F05/F06 con M_año = 0 y m = 1 → 0/0 (CP-15 no bloquea sin demanda)', () => {
+    assert.deepEqual(meatBirdsCore(0, { meatYieldKg: 1.2, mortalityRate: 1, safetyMargin: 0.1 }), {
+      slaughterBirds: 0,
+      initialBirds: 0,
+    });
+  });
+
   test('F05/F06 con M_año = 0, m < 0 y S < 0 → 0/0', () => {
     assert.deepEqual(meatBirdsCore(0, { meatYieldKg: 1.2, mortalityRate: -0.5, safetyMargin: -1 }), {
       slaughterBirds: 0,
