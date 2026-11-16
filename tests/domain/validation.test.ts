@@ -5,6 +5,7 @@ import { describe, test } from 'node:test';
 import {
   calculateChickenMeat,
   calculateHenEggs,
+  calculateHens,
   calculateQuailEggs,
   calculateQuailMeat,
   calculateQuailReproduction,
@@ -12,8 +13,9 @@ import {
   calculateWeeklyMeatDemand,
 } from '@/domain/calculators';
 import { eggsToIncubateCore, layingFemalesCore, meatBirdsCore } from '@/domain/calculators/core';
+import { SCENARIOS } from '@/domain/calculators/scenarios';
 import { requireParameter, resolveScenario } from '@/domain/calculators/validation';
-import type { ConsumptionLine, ScenarioDefinition } from '@/types';
+import type { ConsumptionLine, ProductCode, ScenarioDefinition } from '@/types';
 
 const baseLine: ConsumptionLine = {
   ageGroup: '19+',
@@ -104,6 +106,57 @@ describe('sin valores de reserva', () => {
 
   test('parámetro presente → se devuelve tal cual', () => {
     assert.equal(requireParameter(incomplete, 'safetyMargin'), 0.15);
+  });
+});
+
+describe('sin valores de reserva en las funciones públicas', () => {
+  // Demanda positiva para que el cálculo llegue a usar todos los parámetros del escenario.
+  const eggs = withLine({});
+  const meat = withLine({ portionQty: 100, portionUnit: 'gramos' });
+  const PUBLIC_FUNCTIONS: [string, ProductCode, (key: string) => unknown][] = [
+    ['calculateHens', 'hen_eggs', (key) => calculateHens(eggs, key)],
+    ['calculateQuailEggs', 'quail_eggs', (key) => calculateQuailEggs(eggs, key)],
+    ['calculateChickenMeat', 'chicken_meat', (key) => calculateChickenMeat(meat, key)],
+    ['calculateQuailMeat', 'quail_meat', (key) => calculateQuailMeat(meat, key)],
+  ];
+  type Parameters = ScenarioDefinition['parameters'];
+  const MODES: [string, (params: Parameters, name: keyof Parameters) => Parameters][] = [
+    [
+      'sin el parámetro',
+      (params, name) => {
+        const copy = { ...params };
+        delete copy[name];
+        return copy;
+      },
+    ],
+    ['con el parámetro en undefined', (params, name) => ({ ...params, [name]: undefined })],
+  ];
+
+  for (const [fnName, productCode, calculate] of PUBLIC_FUNCTIONS) {
+    for (const scenario of SCENARIOS.filter((item) => item.productCode === productCode)) {
+      const names = Object.keys(scenario.parameters) as (keyof Parameters)[];
+      for (const name of names) {
+        for (const [modeName, mutate] of MODES) {
+          test(`${fnName}(${scenario.key}) ${modeName} ${name} → error`, () => {
+            const original = scenario.parameters;
+            scenario.parameters = mutate(original, name);
+            try {
+              assert.throws(() => calculate(scenario.key), new RegExp(`le falta el parámetro ${name}`));
+            } finally {
+              scenario.parameters = original;
+            }
+          });
+        }
+      }
+    }
+  }
+
+  test('cada función pública tiene escenarios con parámetros que probar', () => {
+    for (const [, productCode] of PUBLIC_FUNCTIONS) {
+      const scenarios = SCENARIOS.filter((item) => item.productCode === productCode);
+      assert.ok(scenarios.length > 0);
+      for (const scenario of scenarios) assert.equal(Object.keys(scenario.parameters).length, 3);
+    }
   });
 });
 
