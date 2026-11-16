@@ -2,7 +2,6 @@ import {
   ConsumptionLine,
   CalculationResult,
   ProductCode,
-  ScenarioDefinition,
   LotDistribution,
   QuailReproductionResult,
 } from '@/types';
@@ -17,7 +16,7 @@ import {
   weeklyEggsExact,
   weeklyMeatKgExact,
 } from './core';
-import { sign, toNumber } from '../math/rational';
+import { mul, sign, toNumber } from '../math/rational';
 import {
   assertNonNegative,
   requireParameter,
@@ -26,6 +25,11 @@ import {
 } from './validation';
 
 export { validateConsumptionLines } from './validation';
+
+/** Proporción → porcentaje exacto para textos (0.95 → 95, 0.075 → 7.5). */
+function percent(rate: number): number {
+  return toNumber(mul(rate, 100));
+}
 
 /** Versión del modelo de cálculo que se guarda con cada plan (D-13, documentación §9.1). */
 export const FORMULA_VERSION = 'avicola-1.0.0';
@@ -76,9 +80,9 @@ export function calculateHens(
       formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
       formulaVariables: [
         { symbol: 'E_sem', meaning: 'Demanda semanal', value: '0 huevos' },
-        { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-        { symbol: 'P', meaning: 'Tasa de postura', value: `${(P * 100).toFixed(0)} %` },
-        { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} %` },
+        { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+        { symbol: 'P', meaning: 'Tasa de postura', value: `${percent(P)} %` },
+        { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} %` },
       ],
       explanation: 'Con demanda de 0 huevos no se requieren ponedoras.',
     };
@@ -107,11 +111,11 @@ export function calculateHens(
     formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
     formulaVariables: [
       { symbol: 'E_sem', meaning: 'Demanda semanal', value: `${weeklyDemand} huevos/semana` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'P', meaning: 'Postura diaria', value: `${(P * 100).toFixed(0)} % (${P})` },
-      { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} % (${U})` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'P', meaning: 'Postura diaria', value: `${percent(P)} % (${P})` },
+      { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} % (${U})` },
     ],
-    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${(P * 100).toFixed(0)}% y aprovechamiento del 95%, se calculan exactamente ${layingHens} gallinas ponedoras.`,
+    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${percent(P)}%, aprovechamiento del ${percent(U)}% y margen de seguridad del ${percent(S)}%, se calculan ${layingHens} gallinas ponedoras.`,
   };
 }
 
@@ -143,9 +147,9 @@ export function calculateQuailEggs(
       formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
       formulaVariables: [
         { symbol: 'E_sem', meaning: 'Demanda semanal', value: '0 huevos' },
-        { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-        { symbol: 'P', meaning: 'Tasa de postura', value: `${(P * 100).toFixed(0)} %` },
-        { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} %` },
+        { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+        { symbol: 'P', meaning: 'Tasa de postura', value: `${percent(P)} %` },
+        { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} %` },
       ],
       explanation: 'Con demanda de 0 huevos no se requieren codornices.',
     };
@@ -174,11 +178,11 @@ export function calculateQuailEggs(
     formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
     formulaVariables: [
       { symbol: 'E_sem', meaning: 'Demanda semanal', value: `${weeklyDemand} huevos/semana` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'P', meaning: 'Postura diaria', value: `${(P * 100).toFixed(0)} % (${P})` },
-      { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} % (${U})` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'P', meaning: 'Postura diaria', value: `${percent(P)} % (${P})` },
+      { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} % (${U})` },
     ],
-    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${(P * 100).toFixed(0)}% y seguridad del 10%, se calculan exactamente ${layingFemales} codornices hembras.`,
+    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${percent(P)}%, aprovechamiento del ${percent(U)}% y margen de seguridad del ${percent(S)}%, se calculan ${layingFemales} codornices hembras.`,
   };
 }
 
@@ -215,7 +219,7 @@ export function calculateChickenMeat(
       formulaVariables: [
         { symbol: 'M_año', meaning: 'Demanda anual', value: '0 kg' },
         { symbol: 'Y', meaning: 'Rendimiento comestible', value: `${Y} kg/ave` },
-        { symbol: 'm', meaning: 'Mortalidad', value: `${(m * 100).toFixed(0)} %` },
+        { symbol: 'm', meaning: 'Mortalidad', value: `${percent(m)} %` },
       ],
       explanation: 'Con demanda de 0 kg no se requieren aves de engorda.',
     };
@@ -248,10 +252,10 @@ export function calculateChickenMeat(
       { symbol: 'M_sem', meaning: 'Demanda semanal', value: `${weeklyDemandKg} kg/semana` },
       { symbol: 'M_año', meaning: 'Demanda anual (52 sem)', value: `${annualDemandKg} kg/año` },
       { symbol: 'Y', meaning: 'Rendimiento comestible', value: `${Y} kg/ave` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${(m * 100).toFixed(0)} %` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${percent(m)} %` },
     ],
-    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} aves para sacrificio. Considerando ${(m * 100).toFixed(0)}% de mortalidad, deben iniciarse ${initialChicks} pollitos.`,
+    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} aves para sacrificio. Considerando ${percent(m)}% de mortalidad, deben iniciarse ${initialChicks} pollitos.`,
   };
 }
 
@@ -288,7 +292,7 @@ export function calculateQuailMeat(
       formulaVariables: [
         { symbol: 'M_año', meaning: 'Demanda anual', value: '0 kg' },
         { symbol: 'Y', meaning: 'Rendimiento', value: `${Y} kg/ave` },
-        { symbol: 'm', meaning: 'Mortalidad', value: `${(m * 100).toFixed(0)} %` },
+        { symbol: 'm', meaning: 'Mortalidad', value: `${percent(m)} %` },
       ],
       explanation: 'Con demanda de 0 kg no se requieren codornices para engorda.',
     };
@@ -320,11 +324,11 @@ export function calculateQuailMeat(
     formulaVariables: [
       { symbol: 'M_sem', meaning: 'Demanda semanal', value: `${weeklyDemandKg} kg/semana` },
       { symbol: 'M_año', meaning: 'Demanda anual (52 sem)', value: `${annualDemandKg} kg/año` },
-      { symbol: 'Y', meaning: 'Rendimiento canal comestible', value: `${Y} kg/ave (${Y * 1000} g)` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${(m * 100).toFixed(0)} %` },
+      { symbol: 'Y', meaning: 'Rendimiento canal comestible', value: `${Y} kg/ave (${toNumber(mul(Y, 1000))} g)` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${percent(m)} %` },
     ],
-    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} codornices al sacrificio. Previendo ${(m * 100).toFixed(0)}% de mortalidad, se inician ${initialBirds} aves.`,
+    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} codornices al sacrificio. Previendo ${percent(m)}% de mortalidad, se inician ${initialBirds} aves.`,
   };
 }
 
