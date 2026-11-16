@@ -2,31 +2,37 @@ import {
   ConsumptionLine,
   CalculationResult,
   ProductCode,
-  ScenarioDefinition,
   LotDistribution,
   QuailReproductionResult,
 } from '@/types';
-import { SCENARIOS, PRODUCTS } from './scenarios';
+import { NUTRIENT_REFERENCES, PRODUCTS } from './scenarios';
+import {
+  annualMeatKgExact,
+  eggsToIncubateCore,
+  layingFemalesCore,
+  lotsCore,
+  meatBirdsCore,
+  proteinGramsCore,
+  weeklyEggsExact,
+  weeklyMeatKgExact,
+} from './core';
+import { mul, sign, toNumber } from '../math/rational';
+import {
+  assertNonNegative,
+  requireParameter,
+  resolveScenario,
+  validateConsumptionLines,
+} from './validation';
 
-/**
- * Validaciones matemáticas estrictas (CP13 - CP19)
- */
-export function validateConsumptionLines(lines: ConsumptionLine[]): void {
-  for (const line of lines) {
-    if (line.peopleCount < 0) {
-      throw new Error('El número de personas no puede ser negativo (CP-17).');
-    }
-    if (line.portionQty < 0) {
-      throw new Error('La porción de consumo no puede ser negativa.');
-    }
-    if (line.occasionsPerDay < 0) {
-      throw new Error('Las ocasiones por día no pueden ser negativas.');
-    }
-    if (line.daysPerWeek < 0 || line.daysPerWeek > 7) {
-      throw new Error('Los días por semana deben estar entre 0 y 7 (CP-16).');
-    }
-  }
+export { validateConsumptionLines } from './validation';
+
+/** Proporción → porcentaje exacto para textos (0.95 → 95, 0.075 → 7.5). */
+function percent(rate: number): number {
+  return toNumber(mul(rate, 100));
 }
+
+/** Versión del modelo de cálculo que se guarda con cada plan (D-13, documentación §9.1). */
+export const FORMULA_VERSION = 'avicola-1.0.0';
 
 /**
  * F01 — Demanda semanal de huevos
@@ -34,11 +40,7 @@ export function validateConsumptionLines(lines: ConsumptionLine[]): void {
  */
 export function calculateWeeklyEggsDemand(lines: ConsumptionLine[]): number {
   validateConsumptionLines(lines);
-  let total = 0;
-  for (const line of lines) {
-    total += line.peopleCount * line.portionQty * line.occasionsPerDay * line.daysPerWeek;
-  }
-  return Math.round(total * 100) / 100;
+  return toNumber(weeklyEggsExact(lines));
 }
 
 /**
@@ -47,29 +49,26 @@ export function calculateWeeklyEggsDemand(lines: ConsumptionLine[]): number {
  */
 export function calculateWeeklyMeatDemand(lines: ConsumptionLine[]): number {
   validateConsumptionLines(lines);
-  let totalGrams = 0;
-  for (const line of lines) {
-    totalGrams += line.peopleCount * line.portionQty * line.occasionsPerDay * line.daysPerWeek;
-  }
-  return Math.round((totalGrams / 1000) * 1000) / 1000;
+  return toNumber(weeklyMeatKgExact(lines));
 }
 
 /**
  * F02 & F01 — Cálculo para Huevos de Gallina (SRC-F1)
  */
-export function calculateHenEggs(
+export function calculateHens(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'hen_eggs');
 
-  const weeklyDemand = calculateWeeklyEggsDemand(lines);
-  const P = scenario.parameters.layingRate ?? 0.70;
-  const U = scenario.parameters.utilizationRate ?? 0.95;
-  const S = scenario.parameters.safetyMargin ?? 0.15;
+  validateConsumptionLines(lines);
+  const weeklyEggs = weeklyEggsExact(lines);
+  const weeklyDemand = toNumber(weeklyEggs);
+  const P = requireParameter(scenario, 'layingRate');
+  const U = requireParameter(scenario, 'utilizationRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
-  if (weeklyDemand <= 0) {
+  if (sign(weeklyEggs) <= 0) {
     return {
       productCode: 'hen_eggs',
       scenarioKey: scenario.key,
@@ -81,21 +80,20 @@ export function calculateHenEggs(
       formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
       formulaVariables: [
         { symbol: 'E_sem', meaning: 'Demanda semanal', value: '0 huevos' },
-        { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-        { symbol: 'P', meaning: 'Tasa de postura', value: `${(P * 100).toFixed(0)} %` },
-        { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} %` },
+        { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+        { symbol: 'P', meaning: 'Tasa de postura', value: `${percent(P)} %` },
+        { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} %` },
       ],
       explanation: 'Con demanda de 0 huevos no se requieren ponedoras.',
     };
   }
 
-  if (P <= 0) throw new Error('La tasa de postura no puede ser 0 o negativa con demanda positiva (CP-13).');
-  if (U <= 0) throw new Error('La tasa de aprovechamiento debe ser mayor a 0.');
-
-  // G = ceil(E_sem * (1 + S) / (7 * P * U))
-  const numerator = weeklyDemand * (1 + S);
-  const denominator = 7 * P * U;
-  const layingHens = Math.ceil(numerator / denominator);
+  // F02: G = ceil(E_sem · (1 + S) / (7 · P · U)), con aritmética exacta
+  const layingHens = layingFemalesCore(weeklyEggs, {
+    layingRate: P,
+    utilizationRate: U,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'hen_eggs',
@@ -113,11 +111,11 @@ export function calculateHenEggs(
     formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
     formulaVariables: [
       { symbol: 'E_sem', meaning: 'Demanda semanal', value: `${weeklyDemand} huevos/semana` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'P', meaning: 'Postura diaria', value: `${(P * 100).toFixed(0)} % (${P})` },
-      { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} % (${U})` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'P', meaning: 'Postura diaria', value: `${percent(P)} % (${P})` },
+      { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} % (${U})` },
     ],
-    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${(P * 100).toFixed(0)}% y aprovechamiento del 95%, se calculan exactamente ${layingHens} gallinas ponedoras.`,
+    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${percent(P)}%, aprovechamiento del ${percent(U)}% y margen de seguridad del ${percent(S)}%, se calculan ${layingHens} gallinas ponedoras.`,
   };
 }
 
@@ -128,15 +126,16 @@ export function calculateQuailEggs(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'quail_eggs');
 
-  const weeklyDemand = calculateWeeklyEggsDemand(lines);
-  const P = scenario.parameters.layingRate ?? 0.68;
-  const U = scenario.parameters.utilizationRate ?? 0.95;
-  const S = scenario.parameters.safetyMargin ?? 0.10;
+  validateConsumptionLines(lines);
+  const weeklyEggs = weeklyEggsExact(lines);
+  const weeklyDemand = toNumber(weeklyEggs);
+  const P = requireParameter(scenario, 'layingRate');
+  const U = requireParameter(scenario, 'utilizationRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
-  if (weeklyDemand <= 0) {
+  if (sign(weeklyEggs) <= 0) {
     return {
       productCode: 'quail_eggs',
       scenarioKey: scenario.key,
@@ -148,20 +147,20 @@ export function calculateQuailEggs(
       formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
       formulaVariables: [
         { symbol: 'E_sem', meaning: 'Demanda semanal', value: '0 huevos' },
-        { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-        { symbol: 'P', meaning: 'Tasa de postura', value: `${(P * 100).toFixed(0)} %` },
-        { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} %` },
+        { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+        { symbol: 'P', meaning: 'Tasa de postura', value: `${percent(P)} %` },
+        { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} %` },
       ],
       explanation: 'Con demanda de 0 huevos no se requieren codornices.',
     };
   }
 
-  if (P <= 0) throw new Error('La tasa de postura no puede ser 0 o negativa con demanda positiva (CP-13).');
-  if (U <= 0) throw new Error('La tasa de aprovechamiento debe ser mayor a 0.');
-
-  const numerator = weeklyDemand * (1 + S);
-  const denominator = 7 * P * U;
-  const layingFemales = Math.ceil(numerator / denominator);
+  // F02: G = ceil(E_sem · (1 + S) / (7 · P · U)), con aritmética exacta
+  const layingFemales = layingFemalesCore(weeklyEggs, {
+    layingRate: P,
+    utilizationRate: U,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'quail_eggs',
@@ -179,11 +178,11 @@ export function calculateQuailEggs(
     formulaText: 'G = ceil(E_sem · (1 + S) / (7 · P · U))',
     formulaVariables: [
       { symbol: 'E_sem', meaning: 'Demanda semanal', value: `${weeklyDemand} huevos/semana` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'P', meaning: 'Postura diaria', value: `${(P * 100).toFixed(0)} % (${P})` },
-      { symbol: 'U', meaning: 'Aprovechamiento', value: `${(U * 100).toFixed(0)} % (${U})` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'P', meaning: 'Postura diaria', value: `${percent(P)} % (${P})` },
+      { symbol: 'U', meaning: 'Aprovechamiento', value: `${percent(U)} % (${U})` },
     ],
-    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${(P * 100).toFixed(0)}% y seguridad del 10%, se calculan exactamente ${layingFemales} codornices hembras.`,
+    explanation: `Para cubrir ${weeklyDemand} huevos/semana con postura al ${percent(P)}%, aprovechamiento del ${percent(U)}% y margen de seguridad del ${percent(S)}%, se calculan ${layingFemales} codornices hembras.`,
   };
 }
 
@@ -194,16 +193,18 @@ export function calculateChickenMeat(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'chicken_meat');
 
-  const weeklyDemandKg = calculateWeeklyMeatDemand(lines);
-  const annualDemandKg = Math.round(weeklyDemandKg * 52 * 100) / 100; // D-01: 52 semanas
-  const Y = scenario.parameters.meatYieldKg ?? 1.20;
-  const m = scenario.parameters.mortalityRate ?? 0.05;
-  const S = scenario.parameters.safetyMargin ?? 0.10;
+  validateConsumptionLines(lines);
+  const weeklyKg = weeklyMeatKgExact(lines);
+  const annualKg = annualMeatKgExact(weeklyKg); // F04, D-01: 52 semanas
+  const weeklyDemandKg = toNumber(weeklyKg);
+  const annualDemandKg = toNumber(annualKg);
+  const Y = requireParameter(scenario, 'meatYieldKg');
+  const m = requireParameter(scenario, 'mortalityRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
-  if (weeklyDemandKg <= 0) {
+  if (sign(annualKg) <= 0) {
     return {
       productCode: 'chicken_meat',
       scenarioKey: scenario.key,
@@ -218,19 +219,18 @@ export function calculateChickenMeat(
       formulaVariables: [
         { symbol: 'M_año', meaning: 'Demanda anual', value: '0 kg' },
         { symbol: 'Y', meaning: 'Rendimiento comestible', value: `${Y} kg/ave` },
-        { symbol: 'm', meaning: 'Mortalidad', value: `${(m * 100).toFixed(0)} %` },
+        { symbol: 'm', meaning: 'Mortalidad', value: `${percent(m)} %` },
       ],
       explanation: 'Con demanda de 0 kg no se requieren aves de engorda.',
     };
   }
 
-  if (Y <= 0) throw new Error('El rendimiento en carne no puede ser 0 o menor (CP-14).');
-  if (m >= 1) throw new Error('La mortalidad no puede ser del 100% o superior (CP-15).');
-
-  // A_slaughter = ceil(M_year * (1 + S) / Y)
-  const birdsToSlaughter = Math.ceil((annualDemandKg * (1 + S)) / Y);
-  // A_initial = ceil(A_slaughter / (1 - m))
-  const initialChicks = Math.ceil(birdsToSlaughter / (1 - m));
+  // F05 y F06 en dos etapas: A_s = ceil(M_año·(1+S)/Y); A_i = ceil(A_s/(1−m))
+  const { slaughterBirds: birdsToSlaughter, initialBirds: initialChicks } = meatBirdsCore(annualKg, {
+    meatYieldKg: Y,
+    mortalityRate: m,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'chicken_meat',
@@ -252,10 +252,10 @@ export function calculateChickenMeat(
       { symbol: 'M_sem', meaning: 'Demanda semanal', value: `${weeklyDemandKg} kg/semana` },
       { symbol: 'M_año', meaning: 'Demanda anual (52 sem)', value: `${annualDemandKg} kg/año` },
       { symbol: 'Y', meaning: 'Rendimiento comestible', value: `${Y} kg/ave` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${(m * 100).toFixed(0)} %` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${percent(m)} %` },
     ],
-    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} aves para sacrificio. Considerando ${(m * 100).toFixed(0)}% de mortalidad, deben iniciarse ${initialChicks} pollitos.`,
+    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} aves para sacrificio. Considerando ${percent(m)}% de mortalidad, deben iniciarse ${initialChicks} pollitos.`,
   };
 }
 
@@ -266,16 +266,18 @@ export function calculateQuailMeat(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'quail_meat');
 
-  const weeklyDemandKg = calculateWeeklyMeatDemand(lines);
-  const annualDemandKg = Math.round(weeklyDemandKg * 52 * 100) / 100;
-  const Y = scenario.parameters.meatYieldKg ?? 0.14;
-  const m = scenario.parameters.mortalityRate ?? 0.08;
-  const S = scenario.parameters.safetyMargin ?? 0.10;
+  validateConsumptionLines(lines);
+  const weeklyKg = weeklyMeatKgExact(lines);
+  const annualKg = annualMeatKgExact(weeklyKg); // F04, D-01: 52 semanas
+  const weeklyDemandKg = toNumber(weeklyKg);
+  const annualDemandKg = toNumber(annualKg);
+  const Y = requireParameter(scenario, 'meatYieldKg');
+  const m = requireParameter(scenario, 'mortalityRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
-  if (weeklyDemandKg <= 0) {
+  if (sign(annualKg) <= 0) {
     return {
       productCode: 'quail_meat',
       scenarioKey: scenario.key,
@@ -290,17 +292,18 @@ export function calculateQuailMeat(
       formulaVariables: [
         { symbol: 'M_año', meaning: 'Demanda anual', value: '0 kg' },
         { symbol: 'Y', meaning: 'Rendimiento', value: `${Y} kg/ave` },
-        { symbol: 'm', meaning: 'Mortalidad', value: `${(m * 100).toFixed(0)} %` },
+        { symbol: 'm', meaning: 'Mortalidad', value: `${percent(m)} %` },
       ],
       explanation: 'Con demanda de 0 kg no se requieren codornices para engorda.',
     };
   }
 
-  if (Y <= 0) throw new Error('El rendimiento en carne no puede ser 0 o menor (CP-14).');
-  if (m >= 1) throw new Error('La mortalidad no puede ser del 100% o superior (CP-15).');
-
-  const birdsToSlaughter = Math.ceil((annualDemandKg * (1 + S)) / Y);
-  const initialBirds = Math.ceil(birdsToSlaughter / (1 - m));
+  // F05 y F06 en dos etapas: A_s = ceil(M_año·(1+S)/Y); A_i = ceil(A_s/(1−m))
+  const { slaughterBirds: birdsToSlaughter, initialBirds } = meatBirdsCore(annualKg, {
+    meatYieldKg: Y,
+    mortalityRate: m,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'quail_meat',
@@ -321,11 +324,11 @@ export function calculateQuailMeat(
     formulaVariables: [
       { symbol: 'M_sem', meaning: 'Demanda semanal', value: `${weeklyDemandKg} kg/semana` },
       { symbol: 'M_año', meaning: 'Demanda anual (52 sem)', value: `${annualDemandKg} kg/año` },
-      { symbol: 'Y', meaning: 'Rendimiento canal comestible', value: `${Y} kg/ave (${Y * 1000} g)` },
-      { symbol: 'S', meaning: 'Margen de seguridad', value: `${(S * 100).toFixed(0)} %` },
-      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${(m * 100).toFixed(0)} %` },
+      { symbol: 'Y', meaning: 'Rendimiento canal comestible', value: `${Y} kg/ave (${toNumber(mul(Y, 1000))} g)` },
+      { symbol: 'S', meaning: 'Margen de seguridad', value: `${percent(S)} %` },
+      { symbol: 'm', meaning: 'Mortalidad esperada', value: `${percent(m)} %` },
     ],
-    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} codornices al sacrificio. Previendo ${(m * 100).toFixed(0)}% de mortalidad, se inician ${initialBirds} aves.`,
+    explanation: `Para abastecer ${annualDemandKg} kg/año se requieren ${birdsToSlaughter} codornices al sacrificio. Previendo ${percent(m)}% de mortalidad, se inician ${initialBirds} aves.`,
   };
 }
 
@@ -336,24 +339,16 @@ export function calculateQuailMeat(
  * lote_j = base + (j <= remainder ? 1 : 0)
  */
 export function distributeLots(initialBirds: number, lotsCount: number): LotDistribution {
-  if (lotsCount <= 0 || !Number.isInteger(lotsCount)) {
-    throw new Error('El número de lotes debe ser un entero positivo mayor a cero.');
-  }
-  if (initialBirds <= 0) {
+  // El núcleo valida L entero >= 1, aves enteras >= 0 y L <= aves (CP-19, D-11)
+  const birdsPerLot = lotsCore(initialBirds, lotsCount);
+
+  if (birdsPerLot.length === 0) {
     return {
-      lotsCount,
-      birdsPerLot: new Array(lotsCount).fill(0),
+      lotsCount: 0,
+      birdsPerLot,
       totalBirds: 0,
-      explanation: 'Sin aves para distribuir en lotes (CP-19).',
+      explanation: 'Sin aves para distribuir: no se generan lotes vacíos (CP-19).',
     };
-  }
-
-  const base = Math.floor(initialBirds / lotsCount);
-  const remainder = initialBirds % lotsCount;
-  const birdsPerLot: number[] = [];
-
-  for (let j = 1; j <= lotsCount; j++) {
-    birdsPerLot.push(base + (j <= remainder ? 1 : 0));
   }
 
   const totalCalculated = birdsPerLot.reduce((a, b) => a + b, 0);
@@ -362,7 +357,7 @@ export function distributeLots(initialBirds: number, lotsCount: number): LotDist
   }
 
   return {
-    lotsCount,
+    lotsCount: birdsPerLot.length,
     birdsPerLot,
     totalBirds: initialBirds,
     explanation: `Distribución exacta de ${initialBirds} aves en ${lotsCount} lotes: ${birdsPerLot.join(', ')} aves. Suma total idéntica: ${totalCalculated} aves (RF-18).`,
@@ -373,31 +368,20 @@ export function distributeLots(initialBirds: number, lotsCount: number): LotDist
  * F07 — Planificación de reproducción de codorniz ponedora (SRC-F3, Ec. 9)
  * H = ceil(R / (f * h * s * p_female))
  */
-export function calculateQuailReproduction(
+export function calculateQuailBreeding(
   desiredFemales: number,
   fertility: number,
   hatchability: number,
   survival: number,
   femaleRatio: number = 0.50
 ): QuailReproductionResult {
-  if (desiredFemales <= 0) {
-    throw new Error('La cantidad de hembras deseadas debe ser mayor a cero.');
-  }
-  if (fertility <= 0 || fertility > 1) {
-    throw new Error('La fertilidad debe ser mayor a 0 y hasta 100% (CP-18).');
-  }
-  if (hatchability <= 0 || hatchability > 1) {
-    throw new Error('La incubabilidad debe ser mayor a 0 y hasta 100% (CP-18).');
-  }
-  if (survival <= 0 || survival > 1) {
-    throw new Error('La supervivencia debe ser mayor a 0 y hasta 100%.');
-  }
-  if (femaleRatio <= 0 || femaleRatio > 1) {
-    throw new Error('La proporción de hembras debe ser mayor a 0 y hasta 100%.');
-  }
-
-  const overallEfficiency = fertility * hatchability * survival * femaleRatio;
-  const eggsToIncubate = Math.ceil(desiredFemales / overallEfficiency);
+  // F07 con aritmética exacta; el núcleo valida R entero >= 1 y tasas en (0, 1] (CP-18)
+  const eggsToIncubate = eggsToIncubateCore(desiredFemales, {
+    fertility,
+    hatchability,
+    survival,
+    femaleRatio,
+  });
 
   return {
     desiredFemales,
@@ -411,24 +395,36 @@ export function calculateQuailReproduction(
 }
 
 /**
- * F13 — Proteína aproximada aportada (SRC-F1, SRC-F2, SRC-F3, D-07)
+ * F13 — Proteína aproximada aportada (SRC-F1, SRC-F2, SRC-F3, D-07).
+ * Huevos: cantidad en unidades; carne: gramos de carne cocida comestible.
+ * Devuelve gramos redondeados a 1 decimal (half-up) con aritmética exacta.
+ * Lanza error si la cantidad no es finita o es negativa, o si el producto no existe.
  */
-export function calculateProteinGrams(
-  productCode: ProductCode,
-  amount: number // unidades (huevos) o gramos cocidos (carne)
-): number {
-  if (amount <= 0) return 0;
-  switch (productCode) {
-    case 'hen_eggs':
-      return Math.round(amount * 6.5 * 10) / 10;
-    case 'quail_eggs':
-      return Math.round(amount * 1.54 * 10) / 10;
-    case 'chicken_meat':
-      return Math.round((amount / 100) * 28.9 * 10) / 10;
-    case 'quail_meat':
-      return Math.round((amount / 100) * 25.1 * 10) / 10;
-    default:
-      return 0;
+export function calculateProtein(productCode: ProductCode, amount: number): number {
+  const reference = NUTRIENT_REFERENCES[productCode];
+  const product = PRODUCTS[productCode];
+  if (!reference || !product) {
+    throw new Error(`Producto desconocido: ${String(productCode)}`);
   }
+  assertNonNegative(amount, 'La cantidad para calcular proteína', { feminine: true });
+  const basisUnits = product.purpose === 'eggs' ? 1 : 100;
+  return proteinGramsCore(amount, reference.proteinPerBasis, basisUnits);
 }
 
+// --- Alias @deprecated (D-12): se conservan hasta que los Integrantes 1 y 3 migren ---
+
+/** @deprecated Usa `calculateHens` (contrato de integración, D-12). */
+export const calculateHenEggs = calculateHens;
+
+/** @deprecated Usa `calculateQuailBreeding` (contrato de integración, D-12). */
+export const calculateQuailReproduction = calculateQuailBreeding;
+
+/**
+ * @deprecated Usa `calculateProtein` (D-12). A diferencia de `calculateProtein`, este alias es
+ * tolerante: devuelve 0 si la cantidad no es finita o es <= 0, porque `nutrients.tsx` lo llama
+ * sin try/catch. Se eliminará cuando el Integrante 1 migre esa pantalla.
+ */
+export function calculateProteinGrams(productCode: ProductCode, amount: number): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return calculateProtein(productCode, amount);
+}
