@@ -82,6 +82,14 @@ Notación: N_i = personas del grupo i, F_i = ocasiones por día, D_i = días por
 | Pollo, carne | engorda rápida / crecimiento lento | Y = 1.20 / .75 kg; m = .05 / .10; S = .10 |
 | Codorniz, carne | referencia | Y = .14 kg; m = .08; S = .10 |
 
+## Decisiones de cálculo
+
+- **D-10 · Aritmética exacta.** Los cálculos usan racionales `BigInt`, sin redondeos intermedios. Los únicos redondeos son los `ceil` de las fórmulas, aplicados sobre el cociente exacto; el resto se redondea solo al mostrarlo.
+- **D-11 · Validaciones.** Las entradas deben ser números finitos; personas y días/semana deben ser enteros (días de 0 a 7). El escenario debe pertenecer al producto y no hay valores de reserva. Con demanda 0 el resultado es 0 aves; con demanda positiva, los parámetros fuera de rango bloquean el cálculo.
+- **D-16 · Rangos y normalización.** Con demanda positiva, los núcleos exigen P y U en (0, 1], m en [0, 1), Y > 0 y S ≥ 0; una demanda negativa es un error. Cada double se normaliza a 15 cifras significativas antes de convertirlo a racional, así que `33.3 / 100` se toma como 0.333.
+
+El detalle está en las dos secciones siguientes.
+
 ## Aritmética exacta y redondeo (D-10)
 
 - Cada `number` se convierte a un racional exacto **desde su texto decimal**: 0.95 se toma como 95/100, no como 0.94999999999999995559…. Las cuentas se hacen con racionales `BigInt`.
