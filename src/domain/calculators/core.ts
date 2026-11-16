@@ -176,11 +176,11 @@ export interface BreedingParameters {
  * R debe ser entero >= 1 (son hembras); f, h, s y p_hembras en (0, 1] (CP-18, enmienda D-11).
  */
 export function eggsToIncubateCore(desiredFemales: number, params: BreedingParameters): number {
-  assertFinite(desiredFemales, 'La cantidad de hembras deseadas');
+  assertFinite(desiredFemales, 'La cantidad de hembras deseadas', { feminine: true });
   if (desiredFemales <= 0) {
     throw new Error('La cantidad de hembras deseadas debe ser mayor a cero.');
   }
-  assertNonNegativeInteger(desiredFemales, 'La cantidad de hembras deseadas');
+  assertNonNegativeInteger(desiredFemales, 'La cantidad de hembras deseadas', { feminine: true });
   assertRateInUnitInterval(params.fertility, 'La fertilidad', 'CP-18');
   assertRateInUnitInterval(params.hatchability, 'La incubabilidad', 'CP-18');
   assertRateInUnitInterval(params.survival, 'La supervivencia');

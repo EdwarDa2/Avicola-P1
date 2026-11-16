@@ -13,26 +13,47 @@ import type { ConsumptionLine, ProductCode, ScenarioDefinition } from '@/types';
 
 import { SCENARIOS } from './scenarios';
 
+/**
+ * Género y número de la etiqueta, para que el verbo y el adjetivo del mensaje concuerden con ella.
+ * Por defecto, masculino singular ("El número de personas debe ser…").
+ */
+export interface Agreement {
+  feminine?: boolean;
+  plural?: boolean;
+}
+
+/** "debe ser" o "deben ser". */
+function mustBe(agreement: Agreement): string {
+  return agreement.plural ? 'deben ser' : 'debe ser';
+}
+
+/** "no puede ser negativo", "no puede ser negativa", "no pueden ser negativos" o "no pueden ser negativas". */
+function cannotBeNegative(agreement: Agreement): string {
+  const verb = agreement.plural ? 'no pueden ser' : 'no puede ser';
+  const adjective = `negativ${agreement.feminine ? 'a' : 'o'}${agreement.plural ? 's' : ''}`;
+  return `${verb} ${adjective}`;
+}
+
 /** Exige un número finito. */
-export function assertFinite(value: number, label: string): void {
+export function assertFinite(value: number, label: string, agreement: Agreement = {}): void {
   if (typeof value !== 'number' || !Number.isFinite(value)) {
-    throw new Error(`${label} debe ser un número finito (se recibió ${String(value)}).`);
+    throw new Error(`${label} ${mustBe(agreement)} un número finito (se recibió ${String(value)}).`);
   }
 }
 
 /** Exige un número finito mayor o igual a cero. */
-export function assertNonNegative(value: number, label: string): void {
-  assertFinite(value, label);
+export function assertNonNegative(value: number, label: string, agreement: Agreement = {}): void {
+  assertFinite(value, label, agreement);
   if (value < 0) {
-    throw new Error(`${label} no puede ser negativo.`);
+    throw new Error(`${label} ${cannotBeNegative(agreement)}.`);
   }
 }
 
 /** Exige un entero mayor o igual a cero. */
-export function assertNonNegativeInteger(value: number, label: string): void {
-  assertNonNegative(value, label);
+export function assertNonNegativeInteger(value: number, label: string, agreement: Agreement = {}): void {
+  assertNonNegative(value, label, agreement);
   if (!Number.isInteger(value)) {
-    throw new Error(`${label} debe ser un número entero (se recibió ${String(value)}).`);
+    throw new Error(`${label} ${mustBe(agreement)} un número entero (se recibió ${String(value)}).`);
   }
 }
 
@@ -57,21 +78,21 @@ export function validateConsumptionLines(lines: readonly ConsumptionLine[]): voi
     }
     assertNonNegativeInteger(line.peopleCount, 'El número de personas');
 
-    assertFinite(line.portionQty, 'La porción de consumo');
+    assertFinite(line.portionQty, 'La porción de consumo', { feminine: true });
     if (line.portionQty < 0) {
       throw new Error('La porción de consumo no puede ser negativa.');
     }
 
-    assertFinite(line.occasionsPerDay, 'Las ocasiones por día');
+    assertFinite(line.occasionsPerDay, 'Las ocasiones por día', { feminine: true, plural: true });
     if (line.occasionsPerDay < 0) {
       throw new Error('Las ocasiones por día no pueden ser negativas.');
     }
 
-    assertFinite(line.daysPerWeek, 'Los días por semana');
+    assertFinite(line.daysPerWeek, 'Los días por semana', { plural: true });
     if (line.daysPerWeek < 0 || line.daysPerWeek > 7) {
       throw new Error('Los días por semana deben estar entre 0 y 7 (CP-16).');
     }
-    assertNonNegativeInteger(line.daysPerWeek, 'Los días por semana');
+    assertNonNegativeInteger(line.daysPerWeek, 'Los días por semana', { plural: true });
   }
 }
 

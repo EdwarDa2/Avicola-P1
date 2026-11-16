@@ -6,6 +6,7 @@ import {
   calculateChickenMeat,
   calculateHenEggs,
   calculateHens,
+  calculateProtein,
   calculateQuailEggs,
   calculateQuailMeat,
   calculateQuailReproduction,
@@ -60,6 +61,66 @@ describe('líneas de consumo: enteros', () => {
 
   test('ocasiones negativas → error', () => {
     assert.throws(() => calculateWeeklyEggsDemand(withLine({ occasionsPerDay: -1 })), /negativas/);
+  });
+});
+
+describe('concordancia gramatical de los mensajes', () => {
+  const messageOf = (fn: () => unknown): string => {
+    try {
+      fn();
+    } catch (error) {
+      return (error as Error).message;
+    }
+    return 'sin error';
+  };
+
+  test('plural femenino: "Las ocasiones por día deben ser…"', () => {
+    assert.equal(
+      messageOf(() => calculateWeeklyEggsDemand(withLine({ occasionsPerDay: Number.NaN }))),
+      'Las ocasiones por día deben ser un número finito (se recibió NaN).'
+    );
+  });
+
+  test('plural masculino: "Los días por semana deben ser…" (finito y entero)', () => {
+    assert.equal(
+      messageOf(() => calculateWeeklyEggsDemand(withLine({ daysPerWeek: Number.NaN }))),
+      'Los días por semana deben ser un número finito (se recibió NaN).'
+    );
+    assert.equal(
+      messageOf(() => calculateWeeklyEggsDemand(withLine({ daysPerWeek: 3.5 }))),
+      'Los días por semana deben ser un número entero (se recibió 3.5).'
+    );
+  });
+
+  test('singular femenino: "La cantidad para calcular proteína no puede ser negativa."', () => {
+    assert.equal(
+      messageOf(() => calculateProtein('hen_eggs', -1)),
+      'La cantidad para calcular proteína no puede ser negativa.'
+    );
+  });
+
+  test('los mensajes en singular no cambian', () => {
+    assert.equal(
+      messageOf(() => calculateWeeklyEggsDemand(withLine({ peopleCount: 1.5 }))),
+      'El número de personas debe ser un número entero (se recibió 1.5).'
+    );
+    assert.equal(
+      messageOf(() => calculateWeeklyEggsDemand(withLine({ portionQty: Number.NaN }))),
+      'La porción de consumo debe ser un número finito (se recibió NaN).'
+    );
+    assert.equal(
+      messageOf(() => calculateQuailReproduction(2.5, 0.8, 0.75, 0.9, 0.5)),
+      'La cantidad de hembras deseadas debe ser un número entero (se recibió 2.5).'
+    );
+  });
+
+  test('las clases de error no cambian: Error', () => {
+    assert.throws(() => calculateWeeklyEggsDemand(withLine({ daysPerWeek: 3.5 })), (error) => {
+      return error instanceof Error && error.constructor === Error;
+    });
+    assert.throws(() => calculateProtein('hen_eggs', -1), (error) => {
+      return error instanceof Error && error.constructor === Error;
+    });
   });
 });
 

@@ -406,7 +406,7 @@ export function calculateProtein(productCode: ProductCode, amount: number): numb
   if (!reference || !product) {
     throw new Error(`Producto desconocido: ${String(productCode)}`);
   }
-  assertNonNegative(amount, 'La cantidad para calcular proteína');
+  assertNonNegative(amount, 'La cantidad para calcular proteína', { feminine: true });
   const basisUnits = product.purpose === 'eggs' ? 1 : 100;
   return proteinGramsCore(amount, reference.proteinPerBasis, basisUnits);
 }
