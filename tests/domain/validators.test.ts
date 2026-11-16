@@ -78,6 +78,93 @@ describe('CP-15 · mortalidad 100 %', () => {
   });
 });
 
+describe('D-16 · rangos de parámetros en los núcleos con demanda positiva', () => {
+  const laying = { layingRate: 0.7, utilizationRate: 0.95, safetyMargin: 0.15 };
+  const meat = { meatYieldKg: 1.2, mortalityRate: 0.05, safetyMargin: 0.1 };
+
+  test('F02: P > 1 → error', () => {
+    assert.throws(() => layingFemalesCore(63, { ...laying, layingRate: 1.01 }), /postura debe ser mayor a 0 y hasta 100%/);
+  });
+
+  test('F02: U > 1 → error', () => {
+    assert.throws(() => layingFemalesCore(63, { ...laying, utilizationRate: 1.2 }), /aprovechamiento debe ser mayor a 0 y hasta 100%/);
+  });
+
+  test('F02: U negativo → error', () => {
+    assert.throws(() => layingFemalesCore(63, { ...laying, utilizationRate: -0.95 }), /aprovechamiento/);
+  });
+
+  test('F02: U = NaN → error', () => {
+    assert.throws(() => layingFemalesCore(63, { ...laying, utilizationRate: Number.NaN }), /finito/);
+  });
+
+  test('F02: S negativo → error (antes S = -2 daba -13 gallinas)', () => {
+    assert.throws(() => layingFemalesCore(63, { ...laying, safetyMargin: -2 }), /margen de seguridad no puede ser negativo/);
+    assert.throws(() => layingFemalesCore(63, { ...laying, safetyMargin: -1 }), /margen de seguridad/);
+    assert.throws(() => layingFemalesCore(63, { ...laying, safetyMargin: -0.01 }), /margen de seguridad/);
+  });
+
+  test('F02: S = Infinity → error', () => {
+    assert.throws(() => layingFemalesCore(63, { ...laying, safetyMargin: Number.POSITIVE_INFINITY }), /finito/);
+  });
+
+  test('F02: límites válidos P = 1, U = 1, S = 0 → 9 ponedoras para 63 huevos', () => {
+    assert.equal(layingFemalesCore(63, { layingRate: 1, utilizationRate: 1, safetyMargin: 0 }), 9);
+  });
+
+  test('F05/F06: m negativa → error (antes A_i = 44 < A_s = 66)', () => {
+    assert.throws(() => meatBirdsCore(71.76, { ...meat, mortalityRate: -0.5 }), /mortalidad no puede ser negativa/);
+  });
+
+  test('F05/F06: m = NaN → error', () => {
+    assert.throws(() => meatBirdsCore(71.76, { ...meat, mortalityRate: Number.NaN }), /finito/);
+  });
+
+  test('F05/F06: Y = NaN → error', () => {
+    assert.throws(() => meatBirdsCore(71.76, { ...meat, meatYieldKg: Number.NaN }), /finito/);
+  });
+
+  test('F05/F06: S negativo → error', () => {
+    assert.throws(() => meatBirdsCore(71.76, { ...meat, safetyMargin: -0.1 }), /margen de seguridad no puede ser negativo/);
+  });
+
+  test('F05/F06: límites válidos m = 0 y S = 0 → A_s = A_i', () => {
+    assert.deepEqual(meatBirdsCore(71.76, { meatYieldKg: 1.2, mortalityRate: 0, safetyMargin: 0 }), {
+      slaughterBirds: 60,
+      initialBirds: 60,
+    });
+  });
+});
+
+describe('D-16 · demanda negativa en los núcleos', () => {
+  test('F02 con E_sem negativa → error (antes devolvía 0)', () => {
+    assert.throws(
+      () => layingFemalesCore(-10, { layingRate: 0.7, utilizationRate: 0.95, safetyMargin: 0.15 }),
+      /demanda semanal de huevos no puede ser negativa/
+    );
+  });
+
+  test('F05/F06 con M_año negativa → error (antes devolvía 0/0)', () => {
+    assert.throws(
+      () => meatBirdsCore(-5, { meatYieldKg: 1.2, mortalityRate: 0.05, safetyMargin: 0.1 }),
+      /demanda anual de carne no puede ser negativa/
+    );
+  });
+});
+
+describe('D-11 · con demanda 0 el resultado es 0 antes de validar parámetros', () => {
+  test('F02 con E_sem = 0 y parámetros fuera de rango → 0', () => {
+    assert.equal(layingFemalesCore(0, { layingRate: 2, utilizationRate: -1, safetyMargin: -5 }), 0);
+  });
+
+  test('F05/F06 con M_año = 0, m < 0 y S < 0 → 0/0', () => {
+    assert.deepEqual(meatBirdsCore(0, { meatYieldKg: 1.2, mortalityRate: -0.5, safetyMargin: -1 }), {
+      slaughterBirds: 0,
+      initialBirds: 0,
+    });
+  });
+});
+
 describe('CP-16 · días por semana mayores a 7', () => {
   test('días = 8 → error en los cuatro productos', () => {
     assert.throws(() => calculateHenEggs(line({ daysPerWeek: 8 }), 'hen_intermediate'), /CP-16/);

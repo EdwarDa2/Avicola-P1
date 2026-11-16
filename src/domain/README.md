@@ -97,7 +97,8 @@ Notación: N_i = personas del grupo i, F_i = ocasiones por día, D_i = días por
 - Personas y días/semana deben ser enteros, con días entre 0 y 7. Porciones y ocasiones deben ser finitas y ≥ 0.
 - El escenario debe pertenecer al producto. Por ejemplo, `calculateHens(…, 'quail_conservative')` es un error.
 - **No hay valores de reserva**: si a un escenario le falta un parámetro, es un error.
-- Orden de las comprobaciones: con demanda 0 el resultado es 0 aves (CP-19). Con demanda positiva, P ≤ 0 o U ≤ 0 (CP-13), Y ≤ 0 (CP-14) y m ≥ 1 (CP-15) bloquean el cálculo.
+- Orden de las comprobaciones: una demanda negativa es un error. Con demanda 0 el resultado es 0 aves (CP-19) y los parámetros no se revisan. Con demanda positiva, P ≤ 0 o U ≤ 0 (CP-13), Y ≤ 0 (CP-14) y m ≥ 1 (CP-15) bloquean el cálculo.
+- Rangos de los núcleos (D-16): P y U en (0, 1]; m en [0, 1); Y > 0; S finito y ≥ 0.
 - Reproducción: R debe ser entero ≥ 1, y f, h, s y p_hembras deben estar en (0, 1] (CP-18).
 - Lotes:
   - L debe ser entero ≥ 1 y las aves un entero ≥ 0.

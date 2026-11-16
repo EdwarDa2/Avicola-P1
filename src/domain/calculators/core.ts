@@ -23,11 +23,24 @@ import {
   sub,
   toNumber,
 } from '../math/rational';
-import { assertFinite, assertNonNegativeInteger, assertRateInUnitInterval } from './validation';
+import {
+  assertFinite,
+  assertNonNegative,
+  assertNonNegativeInteger,
+  assertRateInUnitInterval,
+} from './validation';
 
-/** Un `number` debe ser finito; un racional ya lo es por construcción. */
-function assertExactFinite(value: Exact, label: string): void {
+/**
+ * Valida una demanda (D-11, D-16): finita y >= 0. Devuelve `true` si es 0, para que el núcleo
+ * responda 0 aves antes de validar los parámetros (CP-19).
+ */
+function isZeroDemand(value: Exact, label: string): boolean {
   if (typeof value === 'number') assertFinite(value, label);
+  const valueSign = sign(value);
+  if (valueSign < 0) {
+    throw new Error(`${label} no puede ser negativa.`);
+  }
+  return valueSign === 0;
 }
 
 /** D-01: semanas por año para la demanda anual de carne. */
@@ -81,20 +94,18 @@ export interface LayingParameters {
 
 /**
  * F02 — G = ceil( E_sem · (1 + S) / (7 · P · U) ).
- * Con E_sem = 0 devuelve 0; con demanda positiva exige P > 0 y U > 0 (CP-13).
+ * Orden (D-11): demanda negativa → error; E_sem = 0 → 0 sin mirar los parámetros;
+ * con demanda positiva exige P y U en (0, 1] (CP-13) y S finito >= 0 (D-16).
  */
 export function layingFemalesCore(weeklyEggs: Exact, params: LayingParameters): number {
-  assertExactFinite(weeklyEggs, 'La demanda semanal de huevos');
+  if (isZeroDemand(weeklyEggs, 'La demanda semanal de huevos')) return 0;
   assertFinite(params.layingRate, 'La tasa de postura');
-  assertFinite(params.utilizationRate, 'La tasa de aprovechamiento');
-  assertFinite(params.safetyMargin, 'El margen de seguridad');
-  if (sign(weeklyEggs) <= 0) return 0;
-  if (sign(params.layingRate) <= 0) {
+  if (params.layingRate <= 0) {
     throw new Error('La tasa de postura no puede ser 0 o negativa con demanda positiva (CP-13).');
   }
-  if (sign(params.utilizationRate) <= 0) {
-    throw new Error('La tasa de aprovechamiento debe ser mayor a 0.');
-  }
+  assertRateInUnitInterval(params.layingRate, 'La tasa de postura');
+  assertRateInUnitInterval(params.utilizationRate, 'La tasa de aprovechamiento');
+  assertNonNegative(params.safetyMargin, 'El margen de seguridad');
   const numerator = mul(weeklyEggs, add(1, params.safetyMargin));
   const denominator = mul(DAYS_PER_WEEK, mul(params.layingRate, params.utilizationRate));
   return bigintToSafeNumber(ceil(div(numerator, denominator)));
@@ -121,21 +132,26 @@ export interface MeatBirds {
  *   A_s = ceil( M_año · (1 + S) / Y )
  *   A_i = ceil( A_s / (1 − m) )
  * No se usa la "fórmula para copiar" de un solo ceil de los PDF (ver README del dominio).
- * Con M_año = 0 devuelve 0/0; con demanda positiva exige Y > 0 (CP-14) y m < 1 (CP-15).
+ * Orden (D-11): demanda negativa → error; M_año = 0 → 0/0 sin mirar los parámetros;
+ * con demanda positiva exige Y > 0 (CP-14), m en [0, 1) (CP-15) y S finito >= 0 (D-16).
  */
 export function meatBirdsCore(annualKg: Exact, params: MeatParameters): MeatBirds {
-  assertExactFinite(annualKg, 'La demanda anual de carne');
+  if (isZeroDemand(annualKg, 'La demanda anual de carne')) {
+    return { slaughterBirds: 0, initialBirds: 0 };
+  }
   assertFinite(params.meatYieldKg, 'El rendimiento en carne');
-  assertFinite(params.mortalityRate, 'La mortalidad');
-  assertFinite(params.safetyMargin, 'El margen de seguridad');
-  if (sign(annualKg) <= 0) return { slaughterBirds: 0, initialBirds: 0 };
-  if (sign(params.meatYieldKg) <= 0) {
+  if (params.meatYieldKg <= 0) {
     throw new Error('El rendimiento en carne no puede ser 0 o menor (CP-14).');
   }
-  const survival = sub(1, params.mortalityRate);
-  if (sign(survival) <= 0) {
+  assertFinite(params.mortalityRate, 'La mortalidad');
+  if (params.mortalityRate < 0) {
+    throw new Error('La mortalidad no puede ser negativa.');
+  }
+  if (params.mortalityRate >= 1) {
     throw new Error('La mortalidad no puede ser del 100% o superior (CP-15).');
   }
+  assertNonNegative(params.safetyMargin, 'El margen de seguridad');
+  const survival = sub(1, params.mortalityRate);
   const slaughter = ceil(div(mul(annualKg, add(1, params.safetyMargin)), params.meatYieldKg));
   const initial = ceil(div(rational(slaughter), survival));
   return {
