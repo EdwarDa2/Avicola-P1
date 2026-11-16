@@ -60,15 +60,23 @@ export function rational(num: bigint, den: bigint = ONE): Rational {
 
 const DECIMAL_TEXT = /^(-?)(\d+)(?:\.(\d+))?(?:e([+-]?\d+))?$/i;
 
+/** Cifras significativas a las que se normaliza cada double antes de convertirlo (D-16). */
+const SIGNIFICANT_DIGITS = 15;
+
 /**
  * Convierte un `number` finito al racional exacto de su texto decimal.
  * Admite enteros, negativos y notación exponencial (`1e-7`, `1e+21`).
+ *
+ * Antes de leer el texto, el double se normaliza a 15 cifras significativas (D-16): así el ruido
+ * binario de una operación previa (p. ej. `33.3 / 100 = 0.33299999999999996`) se interpreta como
+ * el decimal que se quiso escribir (0.333). Todo decimal de hasta 15 cifras se conserva intacto.
  */
 export function fromNumber(value: number): Rational {
   if (!Number.isFinite(value)) {
     throw new RangeError(`Se esperaba un número finito y se recibió ${String(value)}.`);
   }
-  const match = DECIMAL_TEXT.exec(String(value));
+  const normalized = Number(value.toPrecision(SIGNIFICANT_DIGITS));
+  const match = DECIMAL_TEXT.exec(String(normalized));
   if (!match) {
     throw new RangeError(`No se pudo interpretar el número ${String(value)}.`);
   }

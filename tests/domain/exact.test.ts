@@ -8,6 +8,7 @@ import {
   calculateChickenMeat,
   calculateQuailEggs,
   calculateQuailMeat,
+  calculateQuailReproduction,
   calculateWeeklyEggsDemand,
 } from '@/domain/calculators';
 import { meatBirdsCore } from '@/domain/calculators/core';
@@ -85,6 +86,11 @@ describe('casos que distinguen aritmética exacta de doubles y redondeo intermed
       { ageGroup: '19+', peopleCount: 399, portionQty: 1, portionUnit: 'piezas', occasionsPerDay: 1, daysPerWeek: 1 },
     ];
     assert.equal(calculateQuailEggs(lines, 'quail_conservative').primaryBirdsCount, 110);
+  });
+
+  test('reproducción con f = 33.3/100 calculado en double → 1000 huevos, no 1001 (D-16)', () => {
+    assert.equal(calculateQuailReproduction(333, 33.3 / 100, 1, 1, 1).eggsToIncubate, 1000);
+    assert.equal(calculateQuailReproduction(333, 0.333, 1, 1, 1).eggsToIncubate, 1000);
   });
 
   test('E_sem = 3 personas × 0.333 × 1 × 7 = 6.993 (antes 6.99)', () => {

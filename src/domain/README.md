@@ -85,6 +85,7 @@ Notación: N_i = personas del grupo i, F_i = ocasiones por día, D_i = días por
 ## Aritmética exacta y redondeo (D-10)
 
 - Cada `number` se convierte a un racional exacto **desde su texto decimal**: 0.95 se toma como 95/100, no como 0.94999999999999995559…. Las cuentas se hacen con racionales `BigInt`.
+- Antes de convertirlo, cada double se normaliza a **15 cifras significativas** (D-16). Así, un valor que la interfaz calculó en double, como `33.3 / 100 = 0.33299999999999996`, se toma como 333/1000. Los decimales de hasta 15 cifras no cambian.
 - **No hay redondeos intermedios.** Los únicos redondeos del modelo son los `ceil` de F02, F05, F06 y F07, y se aplican sobre el cociente exacto.
 - En carne el redondeo es **en dos etapas**: primero A_s y luego A_i, calculado a partir de A_s ya entero.
 - Antes de este cambio, redondear la demanda anual a 2 decimales y E_sem a 2 decimales producía resultados distintos a la fórmula en 5, 9 y 42 de 2000 casos (pollo rápido, pollo lento y codorniz carne). Varios eran a la baja: con 21 g/semana de pollo daba 1/2 aves en lugar de 2/3. Además, con doubles, E_sem = 399 en codorniz conservadora daba 111 en lugar de 110.

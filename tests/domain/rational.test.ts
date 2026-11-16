@@ -45,6 +45,18 @@ describe('fromNumber · conversión desde el texto decimal', () => {
     });
   }
 
+  test('normaliza a 15 cifras significativas el ruido de doubles calculados (D-16)', () => {
+    assert.equal(33.3 / 100, 0.33299999999999996);
+    assert.equal(asText(fromNumber(33.3 / 100)), '333/1000');
+    assert.equal(asText(fromNumber(0.1 + 0.2)), '3/10');
+    assert.equal(asText(fromNumber(1.1 * 3)), '33/10');
+  });
+
+  test('conserva intactos los decimales de hasta 15 cifras significativas', () => {
+    assert.equal(asText(fromNumber(0.123456789012345)), '24691357802469/200000000000000');
+    assert.equal(asText(fromNumber(123456789012345)), '123456789012345/1');
+  });
+
   test('usa el decimal tecleado, no el binario: 0.1 + 0.2 = 3/10 exacto', () => {
     assert.equal(asText(add(0.1, 0.2)), '3/10');
   });
