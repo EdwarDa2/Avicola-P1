@@ -1,7 +1,9 @@
 import { useApp } from '@/application/state/AppContext';
-import { Badge, Card, EmptyState, Header } from '@/components';
+import { Badge, Card, EmptyState, Header, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import { PRODUCTS } from '@/domain/calculators/scenarios';
 import { ProductCode } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -44,7 +46,10 @@ export default function ResourcesScreen() {
         </View>
 
         <Card variant="obsidian" style={styles.scopeCard}>
-          <Text style={styles.scopeEyebrow}>ALCANCE DE ESTA VERSIÓN</Text>
+          <View style={styles.scopeEyebrowRow}>
+            <Ionicons name="information-circle-outline" size={14} color={Colors.primary} />
+            <Text style={styles.scopeEyebrow}>ALCANCE DE ESTA VERSIÓN</Text>
+          </View>
           <Text style={styles.scopeText}>
             El alimento se estima cuando hay una referencia técnica documentada por
             especie y etapa. El agua, el espacio de alojamiento y el equipamiento se
@@ -54,10 +59,11 @@ export default function ResourcesScreen() {
         </Card>
 
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Aves en producción</Text>
-          <Text style={styles.sectionSubtitle}>
-            Familia activa: {activeFamily ? activeFamily.name : 'Ninguna'}
-          </Text>
+          <SectionTitle
+            icon="basket-outline"
+            title="Aves en producción"
+            subtitle={`Familia activa: ${activeFamily ? activeFamily.name : 'Ninguna'}`}
+          />
         </View>
 
         {basketItems.length === 0 ? (
@@ -75,6 +81,17 @@ export default function ResourcesScreen() {
             return (
               <Card key={item.planId} style={styles.resourceCard}>
                 <View style={styles.cardHeader}>
+                  <View style={styles.productIcon}>
+                    <Ionicons
+                      name={
+                        PRODUCTS[item.productCode].purpose === 'eggs'
+                          ? 'egg-outline'
+                          : 'restaurant-outline'
+                      }
+                      size={18}
+                      color={Colors.ink}
+                    />
+                  </View>
                   <View style={styles.cardHeading}>
                     <Text style={styles.productName}>{item.productName}</Text>
                     <Text style={styles.planName} numberOfLines={1}>
@@ -142,6 +159,11 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
   },
+  scopeEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   scopeEyebrow: {
     ...Typography.captionBold,
     color: Colors.primary,
@@ -163,15 +185,6 @@ const styles = StyleSheet.create({
   sectionHeader: {
     marginBottom: Spacing.sm,
   },
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.ink,
-  },
-  sectionSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    marginTop: 2,
-  },
   resourceCard: {
     padding: Spacing.lg,
     marginBottom: Spacing.md,
@@ -181,6 +194,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
+  },
+  productIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
   },
   cardHeading: {
     flex: 1,

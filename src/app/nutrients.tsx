@@ -1,4 +1,4 @@
-import { Card, Header, Input, ProteinBar } from '@/components';
+import { Card, Header, Input, ProteinBar, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { calculateProteinGrams } from '@/domain/calculators';
 import { NUTRIENT_REFERENCES, PRODUCTS } from '@/domain/calculators/scenarios';
@@ -51,7 +51,7 @@ export default function NutrientsScreen() {
           </Text>
         </View>
 
-        <Text style={styles.sectionTitle}>Alimento</Text>
+        <SectionTitle icon="nutrition-outline" title="Alimento" style={styles.sectionHeading} />
         <View style={styles.optionsRow}>
           {PRODUCT_OPTIONS.map((code) => {
             const isSelected = selectedProduct === code;
@@ -88,12 +88,17 @@ export default function NutrientsScreen() {
         </View>
 
         <Card style={styles.sectionCard}>
-          <Text style={styles.cardTitle}>Cantidad por persona</Text>
-          <Text style={styles.cardSubtitle}>
-            {isEggProduct
-              ? 'Piezas de huevo consumidas en una ocasión.'
-              : 'Gramos de carne cocida consumidos en una ocasión.'}
-          </Text>
+          <SectionTitle
+            icon="scale-outline"
+            title="Cantidad por persona"
+            subtitle={
+              isEggProduct
+                ? 'Piezas de huevo consumidas en una ocasión.'
+                : 'Gramos de carne cocida consumidos en una ocasión.'
+            }
+            size="block"
+            style={styles.cardHeading}
+          />
 
           <Input
             label={isEggProduct ? 'Porción de huevo' : 'Porción de carne'}
@@ -112,7 +117,10 @@ export default function NutrientsScreen() {
         />
 
         <Card variant="obsidian" style={styles.referenceCard}>
-          <Text style={styles.referenceEyebrow}>VALOR DE REFERENCIA</Text>
+          <View style={styles.referenceEyebrowRow}>
+            <Ionicons name="flask-outline" size={14} color={Colors.primary} />
+            <Text style={styles.referenceEyebrow}>VALOR DE REFERENCIA</Text>
+          </View>
           <Text style={styles.referenceValue}>
             {nutrientRef.proteinPerBasis} g de proteína {nutrientRef.basisDescription}
           </Text>
@@ -146,9 +154,7 @@ const styles = StyleSheet.create({
     color: Colors.ash,
     marginTop: Spacing.xs,
   },
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.ink,
+  sectionHeading: {
     marginBottom: Spacing.sm,
   },
   optionsRow: {
@@ -185,19 +191,17 @@ const styles = StyleSheet.create({
   sectionCard: {
     marginBottom: Spacing.md,
   },
-  cardTitle: {
-    ...Typography.bodyBold,
-    color: Colors.ink,
-  },
-  cardSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    marginTop: 2,
+  cardHeading: {
     marginBottom: Spacing.md,
   },
   referenceCard: {
     padding: Spacing.lg,
     marginTop: Spacing.sm,
+  },
+  referenceEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   referenceEyebrow: {
     ...Typography.captionBold,

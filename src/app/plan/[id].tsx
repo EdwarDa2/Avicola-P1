@@ -1,11 +1,21 @@
 import { useApp } from '@/application/state/AppContext';
-import { Badge, Button, Card, ConfirmModal, EmptyState, Header } from '@/components';
-import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import {
+    Badge,
+    Button,
+    Card,
+    ConfirmModal,
+    EmptyState,
+    FormulaBreakdown,
+    Header,
+    LotGrid,
+    SectionTitle
+} from '@/components';
+import { Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS } from '@/domain/calculators/scenarios';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function PlanDetailScreen() {
@@ -65,7 +75,18 @@ export default function PlanDetailScreen() {
 
       <ScrollView contentContainerStyle={styles.container}>
         <Card variant="obsidian" style={styles.heroCard}>
-          <Badge label={isActive ? 'ACTIVO EN LA CANASTA' : 'INACTIVO'} variant="obsidian" size="sm" />
+          <Badge
+            label={isActive ? 'ACTIVO EN LA CANASTA' : 'INACTIVO'}
+            variant="obsidian"
+            size="sm"
+            icon={
+              <Ionicons
+                name={isActive ? 'checkmark-circle-outline' : 'ellipse-outline'}
+                size={12}
+                color={Colors.primary}
+              />
+            }
+          />
           <Text style={styles.heroName}>{plan.name}</Text>
           <Text style={styles.heroMeta}>
             {result.scenarioName} · Guardado el {savedOn} · Modelo {plan.modelVersion}
@@ -105,73 +126,83 @@ export default function PlanDetailScreen() {
         </Card>
 
         <Card style={styles.blockCard}>
-          <Text style={styles.blockTitle}>Qué significa</Text>
+          <SectionTitle
+            icon="information-circle-outline"
+            title="Qué significa"
+            size="block"
+          />
           <Text style={styles.blockText}>{result.explanation}</Text>
         </Card>
 
         <Card style={styles.blockCard}>
-          <Text style={styles.blockTitle}>Cómo se calculó</Text>
-          <View style={styles.formulaBox}>
-            <Text style={styles.formulaCode}>{result.formulaText}</Text>
-          </View>
-          {result.formulaVariables.map((variable) => (
-            <View key={variable.symbol} style={styles.variableRow}>
-              <Text style={styles.variableSymbol}>{variable.symbol}</Text>
-              <Text style={styles.variableMeaning}>{variable.meaning}</Text>
-              <Text style={styles.variableValue}>{variable.value}</Text>
-            </View>
-          ))}
+          <SectionTitle icon="calculator-outline" title="Cómo se calculó" size="block" />
+          <View style={styles.blockSpacer} />
+          <FormulaBreakdown
+            formulaText={result.formulaText}
+            variables={result.formulaVariables}
+          />
         </Card>
 
         {plan.lots && (
           <Card style={styles.blockCard}>
-            <Text style={styles.blockTitle}>Lotes de producción</Text>
-            <Text style={styles.blockText}>{plan.lots.explanation}</Text>
-            <View style={styles.lotsPreview}>
-              {plan.lots.birdsPerLot.map((birds, index) => (
-                <View key={`lot-${index}`} style={styles.lotPill}>
-                  <Text style={styles.lotPillText}>
-                    Lote {index + 1} · {birds} aves
-                  </Text>
-                </View>
-              ))}
-            </View>
+            <SectionTitle icon="grid-outline" title="Lotes de producción" size="block" />
+            <LotGrid birdsPerLot={plan.lots.birdsPerLot} totalBirds={plan.lots.totalBirds} />
           </Card>
         )}
 
         {plan.reproduction && (
           <Card style={styles.blockCard}>
-            <Text style={styles.blockTitle}>Reproducción y reemplazos</Text>
+            <SectionTitle
+              icon="egg-outline"
+              title="Reproducción y reemplazos"
+              size="block"
+            />
             <Text style={styles.blockText}>
               Para obtener {plan.reproduction.desiredFemales} hembras de reemplazo se estiman{' '}
               {plan.reproduction.eggsToIncubate} huevos fértiles a incubar.
             </Text>
-            <View style={styles.variableRow}>
-              <Text style={styles.variableSymbol}>Fertilidad</Text>
-              <Text style={styles.variableMeaning} />
-              <Text style={styles.variableValue}>
-                {(plan.reproduction.fertility * 100).toFixed(0)} %
-              </Text>
-            </View>
-            <View style={styles.variableRow}>
-              <Text style={styles.variableSymbol}>Incubabilidad</Text>
-              <Text style={styles.variableMeaning} />
-              <Text style={styles.variableValue}>
-                {(plan.reproduction.hatchability * 100).toFixed(0)} %
-              </Text>
-            </View>
-            <View style={styles.variableRow}>
-              <Text style={styles.variableSymbol}>Supervivencia</Text>
-              <Text style={styles.variableMeaning} />
-              <Text style={styles.variableValue}>
-                {(plan.reproduction.survival * 100).toFixed(0)} %
-              </Text>
-            </View>
+            <View style={styles.blockSpacer} />
+            <FormulaBreakdown
+              formulaText={plan.reproduction.formulaText}
+              variables={[
+                {
+                  symbol: 'H',
+                  meaning: 'Huevos fértiles a incubar',
+                  value: `${plan.reproduction.eggsToIncubate} huevos`,
+                },
+                {
+                  symbol: 'R',
+                  meaning: 'Hembras de reemplazo deseadas',
+                  value: `${plan.reproduction.desiredFemales} hembras`,
+                },
+                {
+                  symbol: 'f',
+                  meaning: 'Fertilidad',
+                  value: `${(plan.reproduction.fertility * 100).toFixed(0)} %`,
+                },
+                {
+                  symbol: 'h',
+                  meaning: 'Incubabilidad',
+                  value: `${(plan.reproduction.hatchability * 100).toFixed(0)} %`,
+                },
+                {
+                  symbol: 's',
+                  meaning: 'Supervivencia',
+                  value: `${(plan.reproduction.survival * 100).toFixed(0)} %`,
+                },
+                {
+                  symbol: 'p_female',
+                  meaning: 'Proporción de hembras',
+                  value: `${(plan.reproduction.femaleRatio * 100).toFixed(0)} %`,
+                },
+              ]}
+              caption="Cada símbolo del cálculo reproductivo:"
+            />
           </Card>
         )}
 
         <Card style={styles.blockCard}>
-          <Text style={styles.blockTitle}>Recursos vinculados</Text>
+          <SectionTitle icon="leaf-outline" title="Recursos vinculados" size="block" />
           <Text style={styles.blockText}>
             Consulta el alimento estimado y las referencias aplicables a este plan.
           </Text>
@@ -289,66 +320,14 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
-  blockTitle: {
-    ...Typography.bodyBold,
-    color: Colors.ink,
-  },
   blockText: {
     ...Typography.body,
     color: Colors.ash,
     marginTop: Spacing.xs,
     lineHeight: 21,
   },
-  formulaBox: {
-    backgroundColor: Colors.bone,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  formulaCode: {
-    ...Typography.bodyBold,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    color: Colors.ink,
-    fontSize: 13,
-  },
-  variableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-  },
-  variableSymbol: {
-    ...Typography.captionBold,
-    color: Colors.ink,
-    width: 96,
-  },
-  variableMeaning: {
-    ...Typography.caption,
-    color: Colors.ash,
-    flex: 1,
-  },
-  variableValue: {
-    ...Typography.captionBold,
-    color: Colors.ink,
-    textAlign: 'right',
-  },
-  lotsPreview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-  },
-  lotPill: {
-    backgroundColor: Colors.bone,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.hairline,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-  },
-  lotPillText: {
-    ...Typography.captionBold,
-    color: Colors.ink,
+  blockSpacer: {
+    height: Spacing.md,
   },
   resourceButton: {
     marginTop: Spacing.md,

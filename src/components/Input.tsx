@@ -17,6 +17,7 @@ interface InputProps extends TextInputProps {
   prefix?: string;
   suffix?: string;
   containerStyle?: ViewStyle;
+  labelContainerStyle?: ViewStyle;
   inputStyle?: TextStyle;
   required?: boolean;
 }
@@ -28,6 +29,7 @@ export const Input: React.FC<InputProps> = ({
   prefix,
   suffix,
   containerStyle,
+  labelContainerStyle,
   inputStyle,
   required = false,
   ...restProps
@@ -37,7 +39,7 @@ export const Input: React.FC<InputProps> = ({
   return (
     <View style={[styles.container, containerStyle]}>
       {label && (
-        <View style={styles.labelRow}>
+        <View style={[styles.labelRow, labelContainerStyle]}>
           <Text style={styles.label}>
             {label}
             {required && <Text style={styles.requiredAsterisk}> *</Text>}

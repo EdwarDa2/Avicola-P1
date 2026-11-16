@@ -1,5 +1,15 @@
 import { useApp } from '@/application/state/AppContext';
-import { Badge, Button, Card, EmptyState, Header, Input } from '@/components';
+import {
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    FormulaBreakdown,
+    Header,
+    Input,
+    LotGrid,
+    SectionTitle
+} from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import {
     calculateChickenMeat,
@@ -44,6 +54,11 @@ const STEP_LABELS: Record<Step, string> = {
   consume: 'Consumo',
   scenario: 'Escenario',
   result: 'Resultado',
+};
+const STEP_ICONS: Record<Step, keyof typeof Ionicons.glyphMap> = {
+  consume: 'cart-outline',
+  scenario: 'options-outline',
+  result: 'stats-chart-outline',
 };
 
 interface GroupInput {
@@ -166,6 +181,41 @@ export default function CreatePlanScreen() {
     }
   }, [includeBreeding, breeding]);
 
+  const reproductionVariables = reproduction
+    ? [
+        {
+          symbol: 'H',
+          meaning: 'Huevos fértiles a incubar',
+          value: `${reproduction.eggsToIncubate} huevos`,
+        },
+        {
+          symbol: 'R',
+          meaning: 'Hembras de reemplazo deseadas',
+          value: `${reproduction.desiredFemales} hembras`,
+        },
+        {
+          symbol: 'f',
+          meaning: 'Fertilidad',
+          value: `${(reproduction.fertility * 100).toFixed(0)} %`,
+        },
+        {
+          symbol: 'h',
+          meaning: 'Incubabilidad',
+          value: `${(reproduction.hatchability * 100).toFixed(0)} %`,
+        },
+        {
+          symbol: 's',
+          meaning: 'Supervivencia',
+          value: `${(reproduction.survival * 100).toFixed(0)} %`,
+        },
+        {
+          symbol: 'p_female',
+          meaning: 'Proporción de hembras',
+          value: `${(reproduction.femaleRatio * 100).toFixed(0)} %`,
+        },
+      ]
+    : [];
+
   if (!activeFamily) {
     return (
       <SafeAreaView style={styles.safeArea}>
@@ -265,6 +315,13 @@ export default function CreatePlanScreen() {
               <Badge
                 key={item}
                 label={STEP_LABELS[item]}
+                icon={
+                  <Ionicons
+                    name={STEP_ICONS[item]}
+                    size={12}
+                    color={item === step ? Colors.ink : Colors.ash}
+                  />
+                }
                 variant={item === step ? 'primary' : 'muted'}
                 size="sm"
               />
@@ -281,7 +338,10 @@ export default function CreatePlanScreen() {
               </View>
 
               <Card variant="obsidian" style={styles.demandCard}>
-                <Text style={styles.demandLabel}>DEMANDA ESTIMADA</Text>
+                <View style={styles.demandLabelRow}>
+                  <Ionicons name="cart-outline" size={14} color={Colors.primary} />
+                  <Text style={styles.demandLabel}>DEMANDA ESTIMADA</Text>
+                </View>
                 <Text style={styles.demandValue}>
                   {demand.error ? '—' : demand.value}
                 </Text>
@@ -311,6 +371,7 @@ export default function CreatePlanScreen() {
                       onChangeText={(value) => updateInput(group.key, 'portion', value)}
                       keyboardType="numeric"
                       containerStyle={styles.field}
+                      labelContainerStyle={styles.fieldLabel}
                       helperText={group.isSpecialChildGroup ? 'A criterio de la familia' : undefined}
                     />
                     <Input
@@ -319,6 +380,7 @@ export default function CreatePlanScreen() {
                       onChangeText={(value) => updateInput(group.key, 'occasions', value)}
                       keyboardType="numeric"
                       containerStyle={styles.field}
+                      labelContainerStyle={styles.fieldLabel}
                     />
                     <Input
                       label="Días / semana"
@@ -326,6 +388,7 @@ export default function CreatePlanScreen() {
                       onChangeText={(value) => updateInput(group.key, 'days', value)}
                       keyboardType="numeric"
                       containerStyle={styles.field}
+                      labelContainerStyle={styles.fieldLabel}
                     />
                   </View>
                 </Card>
@@ -431,7 +494,12 @@ export default function CreatePlanScreen() {
           {step === 'result' && result && (
             <>
               <Card variant="obsidian" style={styles.resultHero}>
-                <Badge label="RESULTADO" variant="obsidian" size="sm" />
+                <Badge
+                  label="RESULTADO"
+                  variant="obsidian"
+                  size="sm"
+                  icon={<Ionicons name="analytics-outline" size={12} color={Colors.primary} />}
+                />
                 <Text style={styles.resultNumber}>{result.primaryBirdsCount}</Text>
                 <Text style={styles.resultLabel}>{result.primaryBirdsLabel}</Text>
               </Card>
@@ -469,22 +537,21 @@ export default function CreatePlanScreen() {
               </Card>
 
               <Card style={styles.blockCard}>
-                <Text style={styles.blockTitle}>Qué significa</Text>
+                <SectionTitle
+                  icon="information-circle-outline"
+                  title="Qué significa"
+                  size="block"
+                />
                 <Text style={styles.blockText}>{result.explanation}</Text>
               </Card>
 
               <Card style={styles.blockCard}>
-                <Text style={styles.blockTitle}>Cómo se calculó</Text>
-                <View style={styles.formulaBox}>
-                  <Text style={styles.formulaCode}>{result.formulaText}</Text>
-                </View>
-                {result.formulaVariables.map((variable) => (
-                  <View key={variable.symbol} style={styles.variableRow}>
-                    <Text style={styles.variableSymbol}>{variable.symbol}</Text>
-                    <Text style={styles.variableMeaning}>{variable.meaning}</Text>
-                    <Text style={styles.variableValue}>{variable.value}</Text>
-                  </View>
-                ))}
+                <SectionTitle icon="calculator-outline" title="Cómo se calculó" size="block" />
+                <View style={styles.formulaSpacer} />
+                <FormulaBreakdown
+                  formulaText={result.formulaText}
+                  variables={result.formulaVariables}
+                />
               </Card>
 
               {product.hasLotsOption && (
@@ -520,18 +587,7 @@ export default function CreatePlanScreen() {
                         containerStyle={styles.lotsInput}
                       />
                       {lots ? (
-                        <View style={styles.lotsPreview}>
-                          {lots.birdsPerLot.map((birds, index) => (
-                            <View key={`lot-${index}`} style={styles.lotPill}>
-                              <Text style={styles.lotPillText}>
-                                Lote {index + 1} · {birds} aves
-                              </Text>
-                            </View>
-                          ))}
-                          <Text style={styles.lotsTotal}>
-                            Total: {lots.totalBirds} aves (suma exacta)
-                          </Text>
-                        </View>
+                        <LotGrid birdsPerLot={lots.birdsPerLot} totalBirds={lots.totalBirds} />
                       ) : (
                         <Text style={styles.invalidText}>
                           Introduce un número de lotes entero mayor a cero.
@@ -615,13 +671,22 @@ export default function CreatePlanScreen() {
                         <View style={styles.breedingResult}>
                           <Text style={styles.breedingValue}>{reproduction.eggsToIncubate}</Text>
                           <Text style={styles.breedingLabel}>huevos fértiles a incubar</Text>
-                          <Text style={styles.breedingFormula}>{reproduction.formulaText}</Text>
                         </View>
                       ) : (
                         <Text style={styles.invalidText}>
                           Verifica que los porcentajes estén entre 1 % y 100 %.
                         </Text>
                       )}
+
+                      {reproduction ? (
+                        <View style={styles.breedingFormulaWrap}>
+                          <FormulaBreakdown
+                            formulaText={reproduction.formulaText}
+                            variables={reproductionVariables}
+                            caption="Cada símbolo del cálculo reproductivo:"
+                          />
+                        </View>
+                      ) : null}
                     </>
                   )}
                 </Card>
@@ -707,6 +772,11 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     marginBottom: Spacing.md,
   },
+  demandLabelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
   demandLabel: {
     ...Typography.captionBold,
     color: Colors.primary,
@@ -745,6 +815,10 @@ const styles = StyleSheet.create({
   field: {
     flex: 1,
     marginBottom: 0,
+  },
+  fieldLabel: {
+    height: 48,
+    justifyContent: 'center',
   },
   errorBanner: {
     flexDirection: 'row',
@@ -861,38 +935,8 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
     lineHeight: 21,
   },
-  formulaBox: {
-    backgroundColor: Colors.bone,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    marginTop: Spacing.sm,
-    marginBottom: Spacing.sm,
-  },
-  formulaCode: {
-    ...Typography.bodyBold,
-    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    color: Colors.ink,
-    fontSize: 13,
-  },
-  variableRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 5,
-  },
-  variableSymbol: {
-    ...Typography.captionBold,
-    color: Colors.ink,
-    width: 68,
-  },
-  variableMeaning: {
-    ...Typography.caption,
-    color: Colors.ash,
-    flex: 1,
-  },
-  variableValue: {
-    ...Typography.captionBold,
-    color: Colors.ink,
-    textAlign: 'right',
+  formulaSpacer: {
+    height: Spacing.md,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -910,30 +954,6 @@ const styles = StyleSheet.create({
   lotsInput: {
     marginTop: Spacing.md,
     marginBottom: 0,
-  },
-  lotsPreview: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    marginTop: Spacing.md,
-  },
-  lotPill: {
-    backgroundColor: Colors.bone,
-    borderRadius: BorderRadius.full,
-    borderWidth: 1,
-    borderColor: Colors.hairline,
-    paddingVertical: 6,
-    paddingHorizontal: Spacing.md,
-  },
-  lotPillText: {
-    ...Typography.captionBold,
-    color: Colors.ink,
-  },
-  lotsTotal: {
-    ...Typography.caption,
-    color: Colors.ash,
-    width: '100%',
-    marginTop: Spacing.xs,
   },
   invalidText: {
     ...Typography.caption,
@@ -955,11 +975,8 @@ const styles = StyleSheet.create({
     ...Typography.caption,
     color: Colors.ash,
   },
-  breedingFormula: {
-    ...Typography.caption,
-    color: Colors.ash,
-    fontSize: 11,
-    marginTop: Spacing.xs,
+  breedingFormulaWrap: {
+    marginTop: Spacing.md,
   },
   nameInput: {
     marginBottom: 0,
