@@ -7,6 +7,16 @@ import {
   QuailReproductionResult,
 } from '@/types';
 import { SCENARIOS, PRODUCTS } from './scenarios';
+import {
+  annualMeatKgExact,
+  eggsToIncubateCore,
+  layingFemalesCore,
+  lotsCore,
+  meatBirdsCore,
+  weeklyEggsExact,
+  weeklyMeatKgExact,
+} from './core';
+import { sign, toNumber } from '../math/rational';
 
 /**
  * Validaciones matemáticas estrictas (CP13 - CP19)
@@ -34,11 +44,7 @@ export function validateConsumptionLines(lines: ConsumptionLine[]): void {
  */
 export function calculateWeeklyEggsDemand(lines: ConsumptionLine[]): number {
   validateConsumptionLines(lines);
-  let total = 0;
-  for (const line of lines) {
-    total += line.peopleCount * line.portionQty * line.occasionsPerDay * line.daysPerWeek;
-  }
-  return Math.round(total * 100) / 100;
+  return toNumber(weeklyEggsExact(lines));
 }
 
 /**
@@ -47,11 +53,7 @@ export function calculateWeeklyEggsDemand(lines: ConsumptionLine[]): number {
  */
 export function calculateWeeklyMeatDemand(lines: ConsumptionLine[]): number {
   validateConsumptionLines(lines);
-  let totalGrams = 0;
-  for (const line of lines) {
-    totalGrams += line.peopleCount * line.portionQty * line.occasionsPerDay * line.daysPerWeek;
-  }
-  return Math.round((totalGrams / 1000) * 1000) / 1000;
+  return toNumber(weeklyMeatKgExact(lines));
 }
 
 /**
@@ -64,12 +66,14 @@ export function calculateHenEggs(
   const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
   if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
 
-  const weeklyDemand = calculateWeeklyEggsDemand(lines);
+  validateConsumptionLines(lines);
+  const weeklyEggs = weeklyEggsExact(lines);
+  const weeklyDemand = toNumber(weeklyEggs);
   const P = scenario.parameters.layingRate ?? 0.70;
   const U = scenario.parameters.utilizationRate ?? 0.95;
   const S = scenario.parameters.safetyMargin ?? 0.15;
 
-  if (weeklyDemand <= 0) {
+  if (sign(weeklyEggs) <= 0) {
     return {
       productCode: 'hen_eggs',
       scenarioKey: scenario.key,
@@ -89,13 +93,12 @@ export function calculateHenEggs(
     };
   }
 
-  if (P <= 0) throw new Error('La tasa de postura no puede ser 0 o negativa con demanda positiva (CP-13).');
-  if (U <= 0) throw new Error('La tasa de aprovechamiento debe ser mayor a 0.');
-
-  // G = ceil(E_sem * (1 + S) / (7 * P * U))
-  const numerator = weeklyDemand * (1 + S);
-  const denominator = 7 * P * U;
-  const layingHens = Math.ceil(numerator / denominator);
+  // F02: G = ceil(E_sem · (1 + S) / (7 · P · U)), con aritmética exacta
+  const layingHens = layingFemalesCore(weeklyEggs, {
+    layingRate: P,
+    utilizationRate: U,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'hen_eggs',
@@ -131,12 +134,14 @@ export function calculateQuailEggs(
   const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
   if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
 
-  const weeklyDemand = calculateWeeklyEggsDemand(lines);
+  validateConsumptionLines(lines);
+  const weeklyEggs = weeklyEggsExact(lines);
+  const weeklyDemand = toNumber(weeklyEggs);
   const P = scenario.parameters.layingRate ?? 0.68;
   const U = scenario.parameters.utilizationRate ?? 0.95;
   const S = scenario.parameters.safetyMargin ?? 0.10;
 
-  if (weeklyDemand <= 0) {
+  if (sign(weeklyEggs) <= 0) {
     return {
       productCode: 'quail_eggs',
       scenarioKey: scenario.key,
@@ -156,12 +161,12 @@ export function calculateQuailEggs(
     };
   }
 
-  if (P <= 0) throw new Error('La tasa de postura no puede ser 0 o negativa con demanda positiva (CP-13).');
-  if (U <= 0) throw new Error('La tasa de aprovechamiento debe ser mayor a 0.');
-
-  const numerator = weeklyDemand * (1 + S);
-  const denominator = 7 * P * U;
-  const layingFemales = Math.ceil(numerator / denominator);
+  // F02: G = ceil(E_sem · (1 + S) / (7 · P · U)), con aritmética exacta
+  const layingFemales = layingFemalesCore(weeklyEggs, {
+    layingRate: P,
+    utilizationRate: U,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'quail_eggs',
@@ -197,13 +202,16 @@ export function calculateChickenMeat(
   const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
   if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
 
-  const weeklyDemandKg = calculateWeeklyMeatDemand(lines);
-  const annualDemandKg = Math.round(weeklyDemandKg * 52 * 100) / 100; // D-01: 52 semanas
+  validateConsumptionLines(lines);
+  const weeklyKg = weeklyMeatKgExact(lines);
+  const annualKg = annualMeatKgExact(weeklyKg); // F04, D-01: 52 semanas
+  const weeklyDemandKg = toNumber(weeklyKg);
+  const annualDemandKg = toNumber(annualKg);
   const Y = scenario.parameters.meatYieldKg ?? 1.20;
   const m = scenario.parameters.mortalityRate ?? 0.05;
   const S = scenario.parameters.safetyMargin ?? 0.10;
 
-  if (weeklyDemandKg <= 0) {
+  if (sign(annualKg) <= 0) {
     return {
       productCode: 'chicken_meat',
       scenarioKey: scenario.key,
@@ -224,13 +232,12 @@ export function calculateChickenMeat(
     };
   }
 
-  if (Y <= 0) throw new Error('El rendimiento en carne no puede ser 0 o menor (CP-14).');
-  if (m >= 1) throw new Error('La mortalidad no puede ser del 100% o superior (CP-15).');
-
-  // A_slaughter = ceil(M_year * (1 + S) / Y)
-  const birdsToSlaughter = Math.ceil((annualDemandKg * (1 + S)) / Y);
-  // A_initial = ceil(A_slaughter / (1 - m))
-  const initialChicks = Math.ceil(birdsToSlaughter / (1 - m));
+  // F05 y F06 en dos etapas: A_s = ceil(M_año·(1+S)/Y); A_i = ceil(A_s/(1−m))
+  const { slaughterBirds: birdsToSlaughter, initialBirds: initialChicks } = meatBirdsCore(annualKg, {
+    meatYieldKg: Y,
+    mortalityRate: m,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'chicken_meat',
@@ -269,13 +276,16 @@ export function calculateQuailMeat(
   const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
   if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
 
-  const weeklyDemandKg = calculateWeeklyMeatDemand(lines);
-  const annualDemandKg = Math.round(weeklyDemandKg * 52 * 100) / 100;
+  validateConsumptionLines(lines);
+  const weeklyKg = weeklyMeatKgExact(lines);
+  const annualKg = annualMeatKgExact(weeklyKg); // F04, D-01: 52 semanas
+  const weeklyDemandKg = toNumber(weeklyKg);
+  const annualDemandKg = toNumber(annualKg);
   const Y = scenario.parameters.meatYieldKg ?? 0.14;
   const m = scenario.parameters.mortalityRate ?? 0.08;
   const S = scenario.parameters.safetyMargin ?? 0.10;
 
-  if (weeklyDemandKg <= 0) {
+  if (sign(annualKg) <= 0) {
     return {
       productCode: 'quail_meat',
       scenarioKey: scenario.key,
@@ -296,11 +306,12 @@ export function calculateQuailMeat(
     };
   }
 
-  if (Y <= 0) throw new Error('El rendimiento en carne no puede ser 0 o menor (CP-14).');
-  if (m >= 1) throw new Error('La mortalidad no puede ser del 100% o superior (CP-15).');
-
-  const birdsToSlaughter = Math.ceil((annualDemandKg * (1 + S)) / Y);
-  const initialBirds = Math.ceil(birdsToSlaughter / (1 - m));
+  // F05 y F06 en dos etapas: A_s = ceil(M_año·(1+S)/Y); A_i = ceil(A_s/(1−m))
+  const { slaughterBirds: birdsToSlaughter, initialBirds } = meatBirdsCore(annualKg, {
+    meatYieldKg: Y,
+    mortalityRate: m,
+    safetyMargin: S,
+  });
 
   return {
     productCode: 'quail_meat',
@@ -348,13 +359,7 @@ export function distributeLots(initialBirds: number, lotsCount: number): LotDist
     };
   }
 
-  const base = Math.floor(initialBirds / lotsCount);
-  const remainder = initialBirds % lotsCount;
-  const birdsPerLot: number[] = [];
-
-  for (let j = 1; j <= lotsCount; j++) {
-    birdsPerLot.push(base + (j <= remainder ? 1 : 0));
-  }
+  const birdsPerLot = lotsCore(initialBirds, lotsCount);
 
   const totalCalculated = birdsPerLot.reduce((a, b) => a + b, 0);
   if (totalCalculated !== initialBirds) {
@@ -396,8 +401,13 @@ export function calculateQuailReproduction(
     throw new Error('La proporción de hembras debe ser mayor a 0 y hasta 100%.');
   }
 
-  const overallEfficiency = fertility * hatchability * survival * femaleRatio;
-  const eggsToIncubate = Math.ceil(desiredFemales / overallEfficiency);
+  // F07 con aritmética exacta
+  const eggsToIncubate = eggsToIncubateCore(desiredFemales, {
+    fertility,
+    hatchability,
+    survival,
+    femaleRatio,
+  });
 
   return {
     desiredFemales,
