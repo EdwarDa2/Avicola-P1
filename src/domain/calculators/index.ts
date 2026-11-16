@@ -326,19 +326,17 @@ export function calculateQuailMeat(
  * lote_j = base + (j <= remainder ? 1 : 0)
  */
 export function distributeLots(initialBirds: number, lotsCount: number): LotDistribution {
-  if (lotsCount <= 0 || !Number.isInteger(lotsCount)) {
-    throw new Error('El número de lotes debe ser un entero positivo mayor a cero.');
-  }
-  if (initialBirds <= 0) {
+  // El núcleo valida L entero >= 1, aves enteras >= 0 y L <= aves (CP-19, D-11)
+  const birdsPerLot = lotsCore(initialBirds, lotsCount);
+
+  if (birdsPerLot.length === 0) {
     return {
-      lotsCount,
-      birdsPerLot: new Array(lotsCount).fill(0),
+      lotsCount: 0,
+      birdsPerLot,
       totalBirds: 0,
-      explanation: 'Sin aves para distribuir en lotes (CP-19).',
+      explanation: 'Sin aves para distribuir: no se generan lotes vacíos (CP-19).',
     };
   }
-
-  const birdsPerLot = lotsCore(initialBirds, lotsCount);
 
   const totalCalculated = birdsPerLot.reduce((a, b) => a + b, 0);
   if (totalCalculated !== initialBirds) {
@@ -346,7 +344,7 @@ export function distributeLots(initialBirds: number, lotsCount: number): LotDist
   }
 
   return {
-    lotsCount,
+    lotsCount: birdsPerLot.length,
     birdsPerLot,
     totalBirds: initialBirds,
     explanation: `Distribución exacta de ${initialBirds} aves en ${lotsCount} lotes: ${birdsPerLot.join(', ')} aves. Suma total idéntica: ${totalCalculated} aves (RF-18).`,

@@ -177,8 +177,22 @@ export function eggsToIncubateCore(desiredFemales: number, params: BreedingParam
 /**
  * F08 (regla del equipo) — base = floor(A/L); resto = A mod L; lote_j = base + (j <= resto ? 1 : 0).
  * Opera con enteros, así que no necesita racionales.
+ *
+ * Validaciones (CP-19, D-11): L entero >= 1; A entero >= 0; con A = 0 devuelve `[]` (no se generan
+ * lotes vacíos); con L > A se rechaza, porque F08 produciría lotes de 0 aves. La fórmula no cambia.
  */
 export function lotsCore(birds: number, lots: number): number[] {
+  assertFinite(lots, 'El número de lotes');
+  if (!Number.isInteger(lots) || lots < 1) {
+    throw new Error('El número de lotes debe ser un entero positivo mayor a cero.');
+  }
+  assertNonNegativeInteger(birds, 'El número de aves a distribuir');
+  if (birds === 0) return [];
+  if (lots > birds) {
+    throw new Error(
+      `No se pueden repartir ${birds} aves en ${lots} lotes sin dejar lotes vacíos: usa como máximo ${birds} lotes.`
+    );
+  }
   const base = Math.floor(birds / lots);
   const remainder = birds % lots;
   const result: number[] = [];
