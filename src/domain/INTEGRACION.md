@@ -34,11 +34,11 @@ Todas las funciones son síncronas. Los errores de validación son `Error` con u
 - `El número de personas debe ser un número entero (se recibió X).`
 - `La porción de consumo debe ser un número finito (se recibió X).`
 - `La porción de consumo no puede ser negativa.`
-- `Las ocasiones por día debe ser un número finito (se recibió X).`
+- `Las ocasiones por día deben ser un número finito (se recibió X).`
 - `Las ocasiones por día no pueden ser negativas.`
-- `Los días por semana debe ser un número finito (se recibió X).`
+- `Los días por semana deben ser un número finito (se recibió X).`
 - `Los días por semana deben estar entre 0 y 7 (CP-16).`
-- `Los días por semana debe ser un número entero (se recibió X).`
+- `Los días por semana deben ser un número entero (se recibió X).`
 
 **Errores de escenario (E):**
 
@@ -111,7 +111,7 @@ Con demanda 0, las cuatro funciones devuelven 0 aves (no es error).
 | --- | --- |
 | Parámetros | `productCode: ProductCode`. `amount: number`: huevos (unidades) o gramos de carne cocida; ≥ 0 |
 | Devuelve | `number`: gramos de proteína, redondeados a 1 decimal |
-| Errores | `Producto desconocido: <código>` · `La cantidad para calcular proteína debe ser un número finito (se recibió X).` · `La cantidad para calcular proteína no puede ser negativo.` |
+| Errores | `Producto desconocido: <código>` · `La cantidad para calcular proteína debe ser un número finito (se recibió X).` · `La cantidad para calcular proteína no puede ser negativa.` |
 
 Otras exportaciones útiles: `FORMULA_VERSION` (texto), `calculateWeeklyEggsDemand(lines)` y `calculateWeeklyMeatDemand(lines)` (demanda semanal sin escenario; lanzan errores L), y `validateConsumptionLines(lines)`.
 
