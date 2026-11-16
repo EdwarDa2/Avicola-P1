@@ -31,6 +31,14 @@ export default function RootLayout() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="plan/create"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="plan/[id]"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="help"
             options={{ presentation: 'modal', headerShown: false }}
           />

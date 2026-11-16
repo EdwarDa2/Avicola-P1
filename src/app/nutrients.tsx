@@ -1,94 +1,122 @@
-import { Button, Card, Header, Input, ProteinBar } from '@/components';
-import { Colors, Spacing, Typography } from '@/constants/theme';
+import { Card, Header, Input, ProteinBar } from '@/components';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { calculateProteinGrams } from '@/domain/calculators';
 import { NUTRIENT_REFERENCES, PRODUCTS } from '@/domain/calculators/scenarios';
 import { ProductCode } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+const PRODUCT_OPTIONS: ProductCode[] = ['hen_eggs', 'chicken_meat', 'quail_eggs', 'quail_meat'];
+
+const DEFAULT_PORTIONS: Record<ProductCode, string> = {
+  hen_eggs: '2',
+  quail_eggs: '5',
+  chicken_meat: '100',
+  quail_meat: '100',
+};
 
 export default function NutrientsScreen() {
   const router = useRouter();
   const [selectedProduct, setSelectedProduct] = useState<ProductCode>('hen_eggs');
-  const [portionAmount, setPortionAmount] = useState<string>('2'); // 2 huevos por defecto
+  const [portionAmount, setPortionAmount] = useState<string>(DEFAULT_PORTIONS.hen_eggs);
 
-  const currentProduct = PRODUCTS[selectedProduct];
   const nutrientRef = NUTRIENT_REFERENCES[selectedProduct];
+  const isEggProduct = PRODUCTS[selectedProduct].purpose === 'eggs';
 
   const amountNum = Math.max(0, parseFloat(portionAmount) || 0);
   const proteinGrams = calculateProteinGrams(selectedProduct, amountNum);
 
-  const productOptions: ProductCode[] = ['hen_eggs', 'chicken_meat', 'quail_eggs', 'quail_meat'];
+  const handleSelectProduct = (code: ProductCode) => {
+    setSelectedProduct(code);
+    setPortionAmount(DEFAULT_PORTIONS[code]);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Aporte Nutricional"
-        subtitle="MÓDULO M08 · Informativo (D-07)"
+        title="Aporte de proteína"
+        subtitle="Informativo, por porción"
         showBack={true}
         onBack={() => router.back()}
       />
 
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Selector de Alimento */}
-        <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Seleccionar alimento</Text>
-          <View style={styles.optionsGrid}>
-            {productOptions.map((code) => {
-              const isSelected = selectedProduct === code;
-              const prod = PRODUCTS[code];
-              return (
-                <Button
-                  key={code}
-                  title={prod.shortName}
-                  onPress={() => {
-                    setSelectedProduct(code);
-                    if (code === 'hen_eggs') setPortionAmount('2');
-                    else if (code === 'quail_eggs') setPortionAmount('5');
-                    else setPortionAmount('100'); // 100g para carne
-                  }}
-                  variant={isSelected ? 'primary' : 'secondary'}
-                  style={styles.optionButton}
-                />
-              );
-            })}
-          </View>
-        </Card>
+        <View style={styles.intro}>
+          <Text style={styles.title}>¿Cuánta proteína aporta una porción?</Text>
+          <Text style={styles.subtitle}>
+            Es una referencia del alimento, no una meta diaria.
+          </Text>
+        </View>
 
-        {/* Captura de Porción */}
+        <Text style={styles.sectionTitle}>Alimento</Text>
+        <View style={styles.optionsRow}>
+          {PRODUCT_OPTIONS.map((code) => {
+            const isSelected = selectedProduct === code;
+            const prod = PRODUCTS[code];
+
+            return (
+              <Pressable
+                key={code}
+                onPress={() => handleSelectProduct(code)}
+                accessible={true}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={`Seleccionar ${prod.name}`}
+                style={({ pressed }) => [
+                  styles.optionChip,
+                  isSelected && styles.optionChipSelected,
+                  { opacity: pressed ? 0.75 : 1 },
+                ]}
+              >
+                <Ionicons
+                  name={prod.purpose === 'eggs' ? 'egg-outline' : 'restaurant-outline'}
+                  size={16}
+                  color={isSelected ? Colors.ink : Colors.ash}
+                />
+                <Text
+                  style={[styles.optionText, isSelected && styles.optionTextSelected]}
+                  numberOfLines={1}
+                >
+                  {prod.shortName}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+
         <Card style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Cantidad por persona</Text>
-          <Text style={styles.sectionSubtitle}>
-            {selectedProduct === 'hen_eggs' || selectedProduct === 'quail_eggs'
-              ? 'Introduce el número de piezas de huevo consumidas en una ocasión.'
-              : 'Introduce los gramos de carne cocida comestible consumidos en una ocasión.'}
+          <Text style={styles.cardTitle}>Cantidad por persona</Text>
+          <Text style={styles.cardSubtitle}>
+            {isEggProduct
+              ? 'Piezas de huevo consumidas en una ocasión.'
+              : 'Gramos de carne cocida consumidos en una ocasión.'}
           </Text>
 
           <Input
-            label="Porción en la ocasión"
+            label={isEggProduct ? 'Porción de huevo' : 'Porción de carne'}
             value={portionAmount}
             onChangeText={setPortionAmount}
             keyboardType="numeric"
-            suffix={selectedProduct === 'hen_eggs' || selectedProduct === 'quail_eggs' ? 'piezas' : 'g cocidos'}
+            suffix={isEggProduct ? 'piezas' : 'g cocidos'}
           />
         </Card>
 
-        {/* Barra de Proteína Animada (RF-51 & D-07) */}
         <ProteinBar
           proteinGrams={proteinGrams}
           foodName={nutrientRef.foodName}
-          portionDescription={`${amountNum} ${selectedProduct === 'hen_eggs' || selectedProduct === 'quail_eggs' ? 'unidades' : 'g'}`}
+          portionDescription={`${amountNum} ${isEggProduct ? 'unidades' : 'g'}`}
           maxScale={60}
         />
 
-        {/* Tarjeta de Trazabilidad Nutricional */}
-        <Card variant="obsidian" style={styles.refCard}>
-          <Text style={styles.refTitle}>VALOR DE REFERENCIA DE COMPOSICIÓN</Text>
-          <Text style={styles.refValue}>
+        <Card variant="obsidian" style={styles.referenceCard}>
+          <Text style={styles.referenceEyebrow}>VALOR DE REFERENCIA</Text>
+          <Text style={styles.referenceValue}>
             {nutrientRef.proteinPerBasis} g de proteína {nutrientRef.basisDescription}
           </Text>
-          <Text style={styles.refSource}>Fuente documentada: {nutrientRef.source}</Text>
+          <Text style={styles.referenceSource}>Fuente: {nutrientRef.source}</Text>
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -104,50 +132,88 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingBottom: Spacing.huge,
   },
-  sectionCard: {
-    marginBottom: Spacing.md,
+  intro: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  title: {
+    ...Typography.h1,
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  subtitle: {
+    ...Typography.body,
+    color: Colors.ash,
+    marginTop: Spacing.xs,
   },
   sectionTitle: {
     ...Typography.h3,
     color: Colors.ink,
-    marginBottom: 4,
+    marginBottom: Spacing.sm,
   },
-  sectionSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    lineHeight: 18,
-    marginBottom: Spacing.md,
-  },
-  optionsGrid: {
+  optionsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: Spacing.sm,
-    marginTop: Spacing.xs,
+    marginBottom: Spacing.lg,
   },
-  optionButton: {
-    flex: 1,
-    minWidth: '45%',
-    minHeight: 44,
+  optionChip: {
+    flexGrow: 1,
+    flexBasis: '47%',
+    minHeight: 48,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.hairline,
+    backgroundColor: Colors.paper,
   },
-  refCard: {
+  optionChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primaryDark,
+  },
+  optionText: {
+    ...Typography.captionBold,
+    color: Colors.ash,
+    flexShrink: 1,
+  },
+  optionTextSelected: {
+    color: Colors.ink,
+  },
+  sectionCard: {
+    marginBottom: Spacing.md,
+  },
+  cardTitle: {
+    ...Typography.bodyBold,
+    color: Colors.ink,
+  },
+  cardSubtitle: {
+    ...Typography.caption,
+    color: Colors.ash,
+    marginTop: 2,
+    marginBottom: Spacing.md,
+  },
+  referenceCard: {
     padding: Spacing.lg,
     marginTop: Spacing.sm,
   },
-  refTitle: {
+  referenceEyebrow: {
     ...Typography.captionBold,
     color: Colors.primary,
     fontSize: 11,
     letterSpacing: 0.6,
   },
-  refValue: {
+  referenceValue: {
     ...Typography.bodyBold,
     color: Colors.paper,
     fontSize: 16,
-    marginVertical: 4,
+    marginVertical: Spacing.xs,
   },
-  refSource: {
+  referenceSource: {
     ...Typography.caption,
     color: Colors.textLightMuted,
-    fontSize: 12,
+    fontSize: 11,
   },
 });

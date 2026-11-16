@@ -49,8 +49,8 @@ export default function HelpScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Ayuda y Fórmulas"
-        subtitle="MÓDULO M10 · Trazabilidad y fuentes"
+        title="Ayuda y fórmulas"
+        subtitle="Fuentes y trazabilidad"
         showBack={true}
         onBack={() => router.back()}
       />
@@ -58,14 +58,14 @@ export default function HelpScreen() {
       <ScrollView contentContainerStyle={styles.container}>
         <Card variant="obsidian" style={styles.heroCard}>
           <Text style={styles.heroBadge}>BASE CIENTÍFICA Y MATEMÁTICA</Text>
-          <Text style={styles.heroTitle}>Modelos de Traspatio V1.0</Text>
+          <Text style={styles.heroTitle}>Modelos de traspatio V1.0</Text>
           <Text style={styles.heroText}>
             Todos los cálculos corresponden con exactitud a los modelos matemáticos
             didácticos oficiales para autoconsumo familiar (SRC-F1, SRC-F2, SRC-F3).
           </Text>
         </Card>
 
-        <Text style={styles.sectionHeader}>Fórmulas Matemáticas</Text>
+        <Text style={styles.sectionHeader}>Fórmulas y variables</Text>
 
         {formulas.map((item) => (
           <Card key={item.id} style={styles.formulaCard}>
@@ -80,12 +80,12 @@ export default function HelpScreen() {
           </Card>
         ))}
 
-        <Card style={styles.policyCard}>
-          <Text style={styles.policyTitle}>Privacidad y Funcionamiento Offline</Text>
+        <Card variant="muted" style={styles.policyCard}>
+          <Text style={styles.policyTitle}>Privacidad y funcionamiento sin conexión</Text>
           <Text style={styles.policyText}>
-            Esta aplicación opera 100% de forma local en tu dispositivo móvil.
-            No requiere conexión a internet, no transmite información a servidores en la nube
-            y minimiza la recolección de datos personales (RNF-01, RNF-04, MASVS).
+            La aplicación funciona por completo en tu dispositivo. No requiere conexión a
+            internet, no transmite información a servidores y reduce al mínimo la
+            recolección de datos personales (RNF-01, RNF-04).
           </Text>
         </Card>
       </ScrollView>
@@ -109,18 +109,19 @@ const styles = StyleSheet.create({
   heroBadge: {
     ...Typography.captionBold,
     color: Colors.primary,
-    letterSpacing: 0.8,
+    fontSize: 11,
+    letterSpacing: 0.6,
   },
   heroTitle: {
     ...Typography.h2,
     color: Colors.paper,
-    marginTop: 4,
+    marginTop: Spacing.xs,
     marginBottom: Spacing.xs,
   },
   heroText: {
     ...Typography.body,
     color: Colors.textLightMuted,
-    lineHeight: 20,
+    lineHeight: 21,
   },
   sectionHeader: {
     ...Typography.h3,
@@ -143,7 +144,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   formulaBox: {
-    backgroundColor: Colors.boneDark,
+    backgroundColor: Colors.bone,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
     marginBottom: Spacing.sm,
@@ -161,14 +162,11 @@ const styles = StyleSheet.create({
   },
   policyCard: {
     marginTop: Spacing.md,
-    padding: Spacing.lg,
-    backgroundColor: Colors.boneDark,
-    borderWidth: 0,
   },
   policyTitle: {
     ...Typography.bodyBold,
     color: Colors.ink,
-    marginBottom: 4,
+    marginBottom: Spacing.xs,
   },
   policyText: {
     ...Typography.caption,

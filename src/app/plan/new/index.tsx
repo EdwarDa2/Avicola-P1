@@ -17,8 +17,7 @@ export default function SelectProductScreen() {
   ];
 
   const handleSelectProduct = (code: ProductCode) => {
-    // En la siguiente rama se conectará con el wizard completo: consume -> scenario -> result
-    router.push(`/history` as any);
+    router.push(`/plan/create?product=${code}` as any);
   };
 
   const getUnitLabel = (product: (typeof PRODUCT_LIST)[number]) =>
