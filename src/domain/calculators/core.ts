@@ -21,6 +21,12 @@ import {
   sign,
   sub,
 } from '../math/rational';
+import { assertFinite, assertNonNegativeInteger, assertRateInUnitInterval } from './validation';
+
+/** Un `number` debe ser finito; un racional ya lo es por construcción. */
+function assertExactFinite(value: Exact, label: string): void {
+  if (typeof value === 'number') assertFinite(value, label);
+}
 
 /** D-01: semanas por año para la demanda anual de carne. */
 export const CALENDAR_WEEKS = 52;
@@ -76,6 +82,10 @@ export interface LayingParameters {
  * Con E_sem = 0 devuelve 0; con demanda positiva exige P > 0 y U > 0 (CP-13).
  */
 export function layingFemalesCore(weeklyEggs: Exact, params: LayingParameters): number {
+  assertExactFinite(weeklyEggs, 'La demanda semanal de huevos');
+  assertFinite(params.layingRate, 'La tasa de postura');
+  assertFinite(params.utilizationRate, 'La tasa de aprovechamiento');
+  assertFinite(params.safetyMargin, 'El margen de seguridad');
   if (sign(weeklyEggs) <= 0) return 0;
   if (sign(params.layingRate) <= 0) {
     throw new Error('La tasa de postura no puede ser 0 o negativa con demanda positiva (CP-13).');
@@ -112,6 +122,10 @@ export interface MeatBirds {
  * Con M_año = 0 devuelve 0/0; con demanda positiva exige Y > 0 (CP-14) y m < 1 (CP-15).
  */
 export function meatBirdsCore(annualKg: Exact, params: MeatParameters): MeatBirds {
+  assertExactFinite(annualKg, 'La demanda anual de carne');
+  assertFinite(params.meatYieldKg, 'El rendimiento en carne');
+  assertFinite(params.mortalityRate, 'La mortalidad');
+  assertFinite(params.safetyMargin, 'El margen de seguridad');
   if (sign(annualKg) <= 0) return { slaughterBirds: 0, initialBirds: 0 };
   if (sign(params.meatYieldKg) <= 0) {
     throw new Error('El rendimiento en carne no puede ser 0 o menor (CP-14).');
@@ -139,8 +153,20 @@ export interface BreedingParameters {
   femaleRatio: number;
 }
 
-/** F07 — H = ceil( R / (f · h · s · p_hembras) ), huevos a incubar. */
+/**
+ * F07 — H = ceil( R / (f · h · s · p_hembras) ), huevos a incubar.
+ * R debe ser entero >= 1 (son hembras); f, h, s y p_hembras en (0, 1] (CP-18, enmienda D-11).
+ */
 export function eggsToIncubateCore(desiredFemales: number, params: BreedingParameters): number {
+  assertFinite(desiredFemales, 'La cantidad de hembras deseadas');
+  if (desiredFemales <= 0) {
+    throw new Error('La cantidad de hembras deseadas debe ser mayor a cero.');
+  }
+  assertNonNegativeInteger(desiredFemales, 'La cantidad de hembras deseadas');
+  assertRateInUnitInterval(params.fertility, 'La fertilidad', 'CP-18');
+  assertRateInUnitInterval(params.hatchability, 'La incubabilidad', 'CP-18');
+  assertRateInUnitInterval(params.survival, 'La supervivencia');
+  assertRateInUnitInterval(params.femaleRatio, 'La proporción de hembras');
   const efficiency = mul(
     mul(params.fertility, params.hatchability),
     mul(params.survival, params.femaleRatio)

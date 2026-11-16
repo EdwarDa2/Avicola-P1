@@ -6,7 +6,7 @@ import {
   LotDistribution,
   QuailReproductionResult,
 } from '@/types';
-import { SCENARIOS, PRODUCTS } from './scenarios';
+import { PRODUCTS } from './scenarios';
 import {
   annualMeatKgExact,
   eggsToIncubateCore,
@@ -17,26 +17,9 @@ import {
   weeklyMeatKgExact,
 } from './core';
 import { sign, toNumber } from '../math/rational';
+import { requireParameter, resolveScenario, validateConsumptionLines } from './validation';
 
-/**
- * Validaciones matemáticas estrictas (CP13 - CP19)
- */
-export function validateConsumptionLines(lines: ConsumptionLine[]): void {
-  for (const line of lines) {
-    if (line.peopleCount < 0) {
-      throw new Error('El número de personas no puede ser negativo (CP-17).');
-    }
-    if (line.portionQty < 0) {
-      throw new Error('La porción de consumo no puede ser negativa.');
-    }
-    if (line.occasionsPerDay < 0) {
-      throw new Error('Las ocasiones por día no pueden ser negativas.');
-    }
-    if (line.daysPerWeek < 0 || line.daysPerWeek > 7) {
-      throw new Error('Los días por semana deben estar entre 0 y 7 (CP-16).');
-    }
-  }
-}
+export { validateConsumptionLines } from './validation';
 
 /**
  * F01 — Demanda semanal de huevos
@@ -63,15 +46,14 @@ export function calculateHenEggs(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'hen_eggs');
 
   validateConsumptionLines(lines);
   const weeklyEggs = weeklyEggsExact(lines);
   const weeklyDemand = toNumber(weeklyEggs);
-  const P = scenario.parameters.layingRate ?? 0.70;
-  const U = scenario.parameters.utilizationRate ?? 0.95;
-  const S = scenario.parameters.safetyMargin ?? 0.15;
+  const P = requireParameter(scenario, 'layingRate');
+  const U = requireParameter(scenario, 'utilizationRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
   if (sign(weeklyEggs) <= 0) {
     return {
@@ -131,15 +113,14 @@ export function calculateQuailEggs(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'quail_eggs');
 
   validateConsumptionLines(lines);
   const weeklyEggs = weeklyEggsExact(lines);
   const weeklyDemand = toNumber(weeklyEggs);
-  const P = scenario.parameters.layingRate ?? 0.68;
-  const U = scenario.parameters.utilizationRate ?? 0.95;
-  const S = scenario.parameters.safetyMargin ?? 0.10;
+  const P = requireParameter(scenario, 'layingRate');
+  const U = requireParameter(scenario, 'utilizationRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
   if (sign(weeklyEggs) <= 0) {
     return {
@@ -199,17 +180,16 @@ export function calculateChickenMeat(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'chicken_meat');
 
   validateConsumptionLines(lines);
   const weeklyKg = weeklyMeatKgExact(lines);
   const annualKg = annualMeatKgExact(weeklyKg); // F04, D-01: 52 semanas
   const weeklyDemandKg = toNumber(weeklyKg);
   const annualDemandKg = toNumber(annualKg);
-  const Y = scenario.parameters.meatYieldKg ?? 1.20;
-  const m = scenario.parameters.mortalityRate ?? 0.05;
-  const S = scenario.parameters.safetyMargin ?? 0.10;
+  const Y = requireParameter(scenario, 'meatYieldKg');
+  const m = requireParameter(scenario, 'mortalityRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
   if (sign(annualKg) <= 0) {
     return {
@@ -273,17 +253,16 @@ export function calculateQuailMeat(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
-  const scenario = SCENARIOS.find((s) => s.key === scenarioKey);
-  if (!scenario) throw new Error(`Escenario no encontrado: ${scenarioKey}`);
+  const scenario = resolveScenario(scenarioKey, 'quail_meat');
 
   validateConsumptionLines(lines);
   const weeklyKg = weeklyMeatKgExact(lines);
   const annualKg = annualMeatKgExact(weeklyKg); // F04, D-01: 52 semanas
   const weeklyDemandKg = toNumber(weeklyKg);
   const annualDemandKg = toNumber(annualKg);
-  const Y = scenario.parameters.meatYieldKg ?? 0.14;
-  const m = scenario.parameters.mortalityRate ?? 0.08;
-  const S = scenario.parameters.safetyMargin ?? 0.10;
+  const Y = requireParameter(scenario, 'meatYieldKg');
+  const m = requireParameter(scenario, 'mortalityRate');
+  const S = requireParameter(scenario, 'safetyMargin');
 
   if (sign(annualKg) <= 0) {
     return {
@@ -385,23 +364,7 @@ export function calculateQuailReproduction(
   survival: number,
   femaleRatio: number = 0.50
 ): QuailReproductionResult {
-  if (desiredFemales <= 0) {
-    throw new Error('La cantidad de hembras deseadas debe ser mayor a cero.');
-  }
-  if (fertility <= 0 || fertility > 1) {
-    throw new Error('La fertilidad debe ser mayor a 0 y hasta 100% (CP-18).');
-  }
-  if (hatchability <= 0 || hatchability > 1) {
-    throw new Error('La incubabilidad debe ser mayor a 0 y hasta 100% (CP-18).');
-  }
-  if (survival <= 0 || survival > 1) {
-    throw new Error('La supervivencia debe ser mayor a 0 y hasta 100%.');
-  }
-  if (femaleRatio <= 0 || femaleRatio > 1) {
-    throw new Error('La proporción de hembras debe ser mayor a 0 y hasta 100%.');
-  }
-
-  // F07 con aritmética exacta
+  // F07 con aritmética exacta; el núcleo valida R entero >= 1 y tasas en (0, 1] (CP-18)
   const eggsToIncubate = eggsToIncubateCore(desiredFemales, {
     fertility,
     hatchability,
