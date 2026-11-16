@@ -7,7 +7,7 @@
  * - El escenario debe existir y pertenecer al producto que se calcula.
  * - No hay valores de reserva: si a un escenario le falta un parámetro es un error.
  *
- * Módulo puro: sin dependencias de React Native, Expo ni de la interfaz.
+ * Sin dependencias de React ni de base de datos.
  */
 import type { ConsumptionLine, ProductCode, ScenarioDefinition } from '@/types';
 

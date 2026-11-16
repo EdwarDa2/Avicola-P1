@@ -2,7 +2,7 @@
 
 Este paquete contiene las funciones puras que calculan las aves necesarias para autoconsumo, los lotes, la reproducción de codornices y el aporte de proteína. Lo mantiene el Integrante 2 (M02, M03, M04 y M08).
 
-- **TypeScript puro.** No depende de React Native, de Expo ni de la interfaz. Se prueba con `npm test` en Node.
+- **Sin dependencias de React ni de base de datos.** Se prueba con `npm test` en Node.
 - **Fórmulas del cliente inmutables (D-09).** Las ecuaciones vienen de los tres PDF del cliente: [F1] gallinas de postura, [F2] pollos para carne y [F3] codornices. Lo que agregó el equipo se marca como *regla del equipo*.
 - **Versión del modelo:** `FORMULA_VERSION = 'avicola-1.0.0'`. Cada plan guardado debe registrarla.
 

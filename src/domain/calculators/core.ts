@@ -5,7 +5,7 @@
  * (D-10): no hay redondeos intermedios y cada `ceil` se aplica sobre el cociente exacto.
  * Las funciones públicas de `index.ts` resuelven el escenario y llaman a estos núcleos.
  *
- * Módulo puro: sin dependencias de React Native, Expo ni de la interfaz.
+ * Sin dependencias de React ni de base de datos.
  */
 import type { ConsumptionLine } from '@/types';
 
