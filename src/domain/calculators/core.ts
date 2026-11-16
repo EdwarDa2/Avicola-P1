@@ -15,11 +15,13 @@ import {
   ceil,
   div,
   type Exact,
+  floor,
   mul,
   rational,
   type Rational,
   sign,
   sub,
+  toNumber,
 } from '../math/rational';
 import { assertFinite, assertNonNegativeInteger, assertRateInUnitInterval } from './validation';
 
@@ -200,4 +202,20 @@ export function lotsCore(birds: number, lots: number): number[] {
     result.push(base + (j <= remainder ? 1 : 0));
   }
   return result;
+}
+
+/**
+ * F13 — proteína = cantidad · proteína_por_base / unidades_de_base, redondeada a 1 decimal half-up.
+ * `basisUnits` es 1 para huevos (g por unidad) y 100 para carne (g por 100 g cocidos).
+ */
+export function proteinGramsCore(amount: number, proteinPerBasis: number, basisUnits: number): number {
+  assertFinite(amount, 'La cantidad');
+  assertFinite(proteinPerBasis, 'La proteína de referencia');
+  assertFinite(basisUnits, 'La base de la referencia');
+  if (amount < 0) {
+    throw new Error('La cantidad para calcular proteína no puede ser negativa.');
+  }
+  const grams = div(mul(amount, proteinPerBasis), basisUnits);
+  const tenths = floor(add(mul(grams, 10), rational(BigInt(1), BigInt(2))));
+  return toNumber(rational(tenths, BigInt(10)));
 }

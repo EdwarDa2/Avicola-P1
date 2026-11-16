@@ -6,20 +6,29 @@ import {
   LotDistribution,
   QuailReproductionResult,
 } from '@/types';
-import { PRODUCTS } from './scenarios';
+import { NUTRIENT_REFERENCES, PRODUCTS } from './scenarios';
 import {
   annualMeatKgExact,
   eggsToIncubateCore,
   layingFemalesCore,
   lotsCore,
   meatBirdsCore,
+  proteinGramsCore,
   weeklyEggsExact,
   weeklyMeatKgExact,
 } from './core';
 import { sign, toNumber } from '../math/rational';
-import { requireParameter, resolveScenario, validateConsumptionLines } from './validation';
+import {
+  assertNonNegative,
+  requireParameter,
+  resolveScenario,
+  validateConsumptionLines,
+} from './validation';
 
 export { validateConsumptionLines } from './validation';
+
+/** Versión del modelo de cálculo que se guarda con cada plan (D-13, documentación §9.1). */
+export const FORMULA_VERSION = 'avicola-1.0.0';
 
 /**
  * F01 — Demanda semanal de huevos
@@ -42,7 +51,7 @@ export function calculateWeeklyMeatDemand(lines: ConsumptionLine[]): number {
 /**
  * F02 & F01 — Cálculo para Huevos de Gallina (SRC-F1)
  */
-export function calculateHenEggs(
+export function calculateHens(
   lines: ConsumptionLine[],
   scenarioKey: string
 ): CalculationResult {
@@ -355,7 +364,7 @@ export function distributeLots(initialBirds: number, lotsCount: number): LotDist
  * F07 — Planificación de reproducción de codorniz ponedora (SRC-F3, Ec. 9)
  * H = ceil(R / (f * h * s * p_female))
  */
-export function calculateQuailReproduction(
+export function calculateQuailBreeding(
   desiredFemales: number,
   fertility: number,
   hatchability: number,
@@ -382,24 +391,36 @@ export function calculateQuailReproduction(
 }
 
 /**
- * F13 — Proteína aproximada aportada (SRC-F1, SRC-F2, SRC-F3, D-07)
+ * F13 — Proteína aproximada aportada (SRC-F1, SRC-F2, SRC-F3, D-07).
+ * Huevos: cantidad en unidades; carne: gramos de carne cocida comestible.
+ * Devuelve gramos redondeados a 1 decimal (half-up) con aritmética exacta.
+ * Lanza error si la cantidad no es finita o es negativa, o si el producto no existe.
  */
-export function calculateProteinGrams(
-  productCode: ProductCode,
-  amount: number // unidades (huevos) o gramos cocidos (carne)
-): number {
-  if (amount <= 0) return 0;
-  switch (productCode) {
-    case 'hen_eggs':
-      return Math.round(amount * 6.5 * 10) / 10;
-    case 'quail_eggs':
-      return Math.round(amount * 1.54 * 10) / 10;
-    case 'chicken_meat':
-      return Math.round((amount / 100) * 28.9 * 10) / 10;
-    case 'quail_meat':
-      return Math.round((amount / 100) * 25.1 * 10) / 10;
-    default:
-      return 0;
+export function calculateProtein(productCode: ProductCode, amount: number): number {
+  const reference = NUTRIENT_REFERENCES[productCode];
+  const product = PRODUCTS[productCode];
+  if (!reference || !product) {
+    throw new Error(`Producto desconocido: ${String(productCode)}`);
   }
+  assertNonNegative(amount, 'La cantidad para calcular proteína');
+  const basisUnits = product.purpose === 'eggs' ? 1 : 100;
+  return proteinGramsCore(amount, reference.proteinPerBasis, basisUnits);
 }
 
+// --- Alias @deprecated (D-12): se conservan hasta que los Integrantes 1 y 3 migren ---
+
+/** @deprecated Usa `calculateHens` (contrato de integración, D-12). */
+export const calculateHenEggs = calculateHens;
+
+/** @deprecated Usa `calculateQuailBreeding` (contrato de integración, D-12). */
+export const calculateQuailReproduction = calculateQuailBreeding;
+
+/**
+ * @deprecated Usa `calculateProtein` (D-12). A diferencia de `calculateProtein`, este alias es
+ * tolerante: devuelve 0 si la cantidad no es finita o es <= 0, porque `nutrients.tsx` lo llama
+ * sin try/catch. Se eliminará cuando el Integrante 1 migre esa pantalla.
+ */
+export function calculateProteinGrams(productCode: ProductCode, amount: number): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  return calculateProtein(productCode, amount);
+}
