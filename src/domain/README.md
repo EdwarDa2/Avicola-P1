@@ -1,6 +1,6 @@
 # Motor de cálculo del dominio (`avicola-1.0.0`)
 
-Este paquete contiene las funciones puras que calculan las aves necesarias para autoconsumo, los lotes, la reproducción de codornices y el aporte de proteína. Lo mantiene el Integrante 2 (M02, M03, M04 y M08).
+Este paquete contiene las funciones puras que calculan las aves necesarias para autoconsumo, los lotes, la reproducción de codornices y el aporte de proteína (módulos M02, M03, M04 y M08).
 
 - **Sin dependencias de React ni de base de datos.** Se prueba con `npm test` en Node.
 - **Fórmulas del cliente inmutables (D-09).** Las ecuaciones vienen de los tres PDF del cliente: [F1] gallinas de postura, [F2] pollos para carne y [F3] codornices. Lo que agregó el equipo se marca como *regla del equipo*.
@@ -31,7 +31,7 @@ Fuente de verdad: `src/Agentes/Planificador_Avicola_Conocimiento_Completo.md` (�
 | `calculateProtein(producto, cantidad)` | F13 | Gramos de proteína (1 decimal) |
 | `calculateWeeklyEggsDemand(lines)` / `calculateWeeklyMeatDemand(lines)` | F01 / F03 | Demanda semanal |
 
-Alias `@deprecated`, que se conservan hasta que los Integrantes 1 y 3 migren:
+Alias `@deprecated`, que se conservan hasta que la interfaz migre a los nombres nuevos:
 
 - `calculateHenEggs` → `calculateHens`
 - `calculateQuailReproduction` → `calculateQuailBreeding`
@@ -119,12 +119,12 @@ Como los escenarios son fijos, CP-13, CP-14 y CP-15 no se pueden provocar desde 
 ## Notas de fidelidad a los PDF
 
 - **"Fórmula para copiar".** Los PDF de pollos y codornices incluyen una fórmula de un solo `ceil`: `ceil(M·(1+S)/Y/(1−m))`. **No se usa**, porque da 117 (pollo lento) y 191 (codorniz carne), lo que contradice los ejemplos del mismo PDF (118 y 192). Se usan las ecuaciones 3 y 4 en dos etapas.
-- **Tabla rápida de pollos.** Para 100 kg/año, Y = 1.00 y S = 10 %, el PDF imprime 111, pero su propia fórmula da exactamente 110 (100 × 1.1 / 1.00). El motor da 110. Está consultado con el cliente (Q1).
-- **Lotes (F08).** El PDF indica `ceil(A_i / L)` aves por lote (70/6 → 12). El reparto exacto 12, 12, 12, 12, 11, 11 es una regla del equipo (Q4).
+- **Tabla rápida de pollos.** Para 100 kg/año, Y = 1.00 y S = 10 %, el PDF imprime 111, pero su propia fórmula da exactamente 110 (100 × 1.1 / 1.00). El motor da 110. Pendiente de confirmar con el cliente: esa celda da 110 con aritmética exacta y 111 con coma flotante (100 × 1.1 = 110.00000000000001); se implementa 110 (ver D-10).
+- **Lotes (F08).** El PDF indica `ceil(A_i / L)` aves por lote (70/6 → 12). El reparto exacto 12, 12, 12, 12, 11, 11 es una regla del equipo, pendiente de confirmar con el cliente.
 - **Letras.** En el PDF de codornices `L` son las hembras ponedoras; en el de pollos `L` son los lotes por año. En código: `G` = hembras ponedoras y `L` = lotes. `H` también aparece como huevos por porción (H_i); por eso el código usa nombres descriptivos.
 - **D_i.** Los PDF dicen de 1 a 7 días; la app permite de 0 a 7, que hace falta para representar consumo 0.
 - **Y.** Es un valor didáctico de kg de carne cocida comestible por ave. El PDF advierte que no se use para comprar aves sin validarlo, y la interfaz debe mostrar esa advertencia.
-- **F07.** El resultado es el total de huevos que se ponen en la incubadora, porque la fertilidad ya está en el denominador. La interfaz y la especificación del equipo lo llaman "huevos fértiles a incubar"; el PDF dice "huevos a incubar" (D-14, Q5). Las tasas de CP-10 (0.80 / 0.75 / 0.90 / 0.50) son ilustrativas del equipo, porque el PDF no trae un ejemplo numérico (Q2).
+- **F07.** El resultado es el total de huevos que se ponen en la incubadora, porque la fertilidad ya está en el denominador. La interfaz y la especificación del equipo lo llaman "huevos fértiles a incubar"; el PDF dice "huevos a incubar" (D-14); el término está pendiente de confirmar con el cliente. Las tasas de CP-10 (0.80 / 0.75 / 0.90 / 0.50) son ilustrativas del equipo, porque el PDF no trae un ejemplo numérico; también están pendientes de confirmar con el cliente.
 - **52 semanas (D-01).** Con 52.14, CP-09 pasaría a 177/193.
 
 ## Pruebas
