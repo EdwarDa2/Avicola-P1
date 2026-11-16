@@ -1,11 +1,12 @@
 import { useApp } from '@/application/state/AppContext';
 import {
-    AnimatedCounter,
-    AnimatedMemberFigures,
-    Button,
-    Card,
-    Header,
-    Input,
+  AnimatedCounter,
+  AnimatedMemberFigures,
+  Button,
+  Card,
+  Header,
+  Input,
+  SectionTitle,
 } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { AGE_GROUPS, AgeGroupKey } from '@/types';
@@ -13,13 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-    Alert,
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -83,10 +84,12 @@ export default function NewFamilyScreen() {
       >
         <ScrollView contentContainerStyle={styles.scrollContent}>
           <Card style={styles.sectionCard}>
-            <Text style={styles.sectionTitle}>Perfil familiar</Text>
-            <Text style={styles.sectionSubtitle}>
-              Ponle un nombre fácil de reconocer.
-            </Text>
+            <SectionTitle
+              icon="person-outline"
+              title="Perfil familiar"
+              subtitle="Ponle un nombre fácil de reconocer."
+              style={styles.sectionHeading}
+            />
 
             <Input
               label="Nombre de la familia"
@@ -123,10 +126,11 @@ export default function NewFamilyScreen() {
           </Card>
 
           <View style={styles.ageSectionHeader}>
-            <Text style={styles.sectionTitle}>Integrantes por edad</Text>
-            <Text style={styles.sectionSubtitle}>
-              Indica cuántas personas hay en cada rango.
-            </Text>
+            <SectionTitle
+              icon="people-outline"
+              title="Integrantes por edad"
+              subtitle="Indica cuántas personas hay en cada rango."
+            />
           </View>
 
           {AGE_GROUPS.map((group) => (
@@ -174,15 +178,7 @@ const styles = StyleSheet.create({
   sectionCard: {
     marginBottom: Spacing.md,
   },
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.ink,
-    marginBottom: 4,
-  },
-  sectionSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    lineHeight: 18,
+  sectionHeading: {
     marginBottom: Spacing.md,
   },
   summaryCard: {
@@ -221,7 +217,7 @@ const styles = StyleSheet.create({
   },
   ageSectionHeader: {
     marginTop: Spacing.xs,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   privacyNote: {
     flexDirection: 'row',

@@ -1,10 +1,28 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme';
-import { Header, Card, Badge } from '@/components';
 import { useApp } from '@/application/state/AppContext';
+import { Badge, Card, EmptyState, Header, SectionTitle } from '@/components';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import { PRODUCTS } from '@/domain/calculators/scenarios';
+import { ProductCode } from '@/types';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+interface FeedReference {
+  amount: string;
+  source: string;
+}
+
+const FEED_REFERENCES: Partial<Record<ProductCode, FeedReference>> = {
+  hen_eggs: {
+    amount: '≈ 115 g por ave al día',
+    source: 'Referencia Hy-Line para traspatio',
+  },
+  quail_eggs: {
+    amount: '≈ 25 g por ave al día',
+    source: 'Referencia de codorniz en postura',
+  },
+};
 
 export default function ResourcesScreen() {
   const router = useRouter();
@@ -13,70 +31,101 @@ export default function ResourcesScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
-        title="Recursos de Producción"
-        subtitle="MÓDULO M07 · Condicional V1 (D-06)"
+        title="Recursos"
+        subtitle="Alimento aplicable a tus planes activos"
         showBack={true}
         onBack={() => router.back()}
       />
 
       <ScrollView contentContainerStyle={styles.container}>
-        {/* Aviso de Decisión D-06 */}
-        <Card variant="obsidian" style={styles.bannerCard}>
-          <Text style={styles.bannerTitle}>ALCANCE DE RECURSOS V1 (D-06)</Text>
-          <Text style={styles.bannerText}>
-            En la versión 1.0, las estimaciones de alimento solo se muestran cuando existe
-            una referencia técnica documentada por especie y etapa. Agua, espacio de alojamiento y
-            equipamiento completo se incorporan formalmente en V2.0.
-          </Text>
-        </Card>
-
-        {/* Resumen de Planes Activos en Canasta */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Aves en producción planificada</Text>
-          <Text style={styles.sectionSubtitle}>
-            Familia activa: {activeFamily ? activeFamily.name : 'Ninguna'}
+        <View style={styles.intro}>
+          <Text style={styles.title}>Recursos de producción</Text>
+          <Text style={styles.subtitle}>
+            El alimento se estima solo cuando existe una referencia aplicable.
           </Text>
         </View>
 
+        <Card variant="obsidian" style={styles.scopeCard}>
+          <View style={styles.scopeEyebrowRow}>
+            <Ionicons name="information-circle-outline" size={14} color={Colors.primary} />
+            <Text style={styles.scopeEyebrow}>ALCANCE DE ESTA VERSIÓN</Text>
+          </View>
+          <Text style={styles.scopeText}>
+            El alimento se estima cuando hay una referencia técnica documentada por
+            especie y etapa. El agua, el espacio de alojamiento y el equipamiento se
+            incorporan en la siguiente versión.
+          </Text>
+          <Text style={styles.scopeFootnote}>Decisión D-06 · Requisitos RF-33 a RF-40</Text>
+        </Card>
+
+        <View style={styles.sectionHeader}>
+          <SectionTitle
+            icon="basket-outline"
+            title="Aves en producción"
+            subtitle={`Familia activa: ${activeFamily ? activeFamily.name : 'Ninguna'}`}
+          />
+        </View>
+
         {basketItems.length === 0 ? (
-          <Card style={styles.emptyCard}>
-            <Text style={styles.emptyText}>
-              No hay planes activos en la canasta para estimar requerimientos de alimento.
-            </Text>
-          </Card>
+          <EmptyState
+            iconName="leaf-outline"
+            title="Sin planes activos"
+            description="Cuando actives un plan de producción verás aquí el alimento estimado para tus aves."
+            actionTitle="Crear un plan"
+            onAction={() => router.push('/plan/new' as any)}
+          />
         ) : (
-          basketItems.map((item) => (
-            <Card key={item.planId} style={styles.resourceCard}>
-              <View style={styles.cardHeader}>
-                <Badge label={item.productName} variant="primary" size="sm" />
-                <Text style={styles.planName}>{item.planName}</Text>
-              </View>
+          basketItems.map((item) => {
+            const reference = FEED_REFERENCES[item.productCode];
 
-              <View style={styles.metricsRow}>
-                <View style={styles.metricBlock}>
-                  <Text style={styles.metricLabel}>AVES CALCULADAS</Text>
-                  <Text style={styles.metricValue}>{item.birdsSummaryText}</Text>
+            return (
+              <Card key={item.planId} style={styles.resourceCard}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.productIcon}>
+                    <Ionicons
+                      name={
+                        PRODUCTS[item.productCode].purpose === 'eggs'
+                          ? 'egg-outline'
+                          : 'restaurant-outline'
+                      }
+                      size={18}
+                      color={Colors.ink}
+                    />
+                  </View>
+                  <View style={styles.cardHeading}>
+                    <Text style={styles.productName}>{item.productName}</Text>
+                    <Text style={styles.planName} numberOfLines={1}>
+                      {item.planName}
+                    </Text>
+                  </View>
+                  <Badge label="Activo" variant="primary" size="sm" />
                 </View>
 
-                <View style={styles.metricBlock}>
-                  <Text style={styles.metricLabel}>ESTIMACIÓN DE ALIMENTO</Text>
-                  {item.productCode === 'hen_eggs' ? (
-                    <Text style={styles.feedText}>
-                      ~115 g / ave / día (referencia Hy-Line traspatio)
-                    </Text>
-                  ) : item.productCode === 'quail_eggs' ? (
-                    <Text style={styles.feedText}>
-                      ~25 g / ave / día (referencia codorniz postura)
-                    </Text>
-                  ) : (
-                    <Text style={styles.feedTextUnavailable}>
-                      Estimación por edad disponible en V2 (D-06)
-                    </Text>
-                  )}
+                <View style={styles.metricsBox}>
+                  <View style={styles.metricRow}>
+                    <Text style={styles.metricLabel}>Aves calculadas</Text>
+                    <Text style={styles.metricValue}>{item.birdsSummaryText}</Text>
+                  </View>
+
+                  <View style={styles.metricDivider} />
+
+                  <View style={styles.metricRow}>
+                    <Text style={styles.metricLabel}>Alimento estimado</Text>
+                    {reference ? (
+                      <>
+                        <Text style={styles.metricValue}>{reference.amount}</Text>
+                        <Text style={styles.metricSource}>{reference.source}</Text>
+                      </>
+                    ) : (
+                      <Text style={styles.metricUnavailable}>
+                        Requiere tabla de consumo por edad y etapa (siguiente versión)
+                      </Text>
+                    )}
+                  </View>
                 </View>
-              </View>
-            </Card>
-          ))
+              </Card>
+            );
+          })
         )}
       </ScrollView>
     </SafeAreaView>
@@ -92,46 +141,53 @@ const styles = StyleSheet.create({
     padding: Spacing.lg,
     paddingBottom: Spacing.huge,
   },
-  bannerCard: {
+  intro: {
+    marginTop: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  title: {
+    ...Typography.h1,
+    fontSize: 24,
+    lineHeight: 30,
+  },
+  subtitle: {
+    ...Typography.body,
+    color: Colors.ash,
+    marginTop: Spacing.xs,
+  },
+  scopeCard: {
     padding: Spacing.lg,
     marginBottom: Spacing.lg,
   },
-  bannerTitle: {
+  scopeEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  scopeEyebrow: {
     ...Typography.captionBold,
     color: Colors.primary,
-    letterSpacing: 0.8,
+    fontSize: 11,
+    letterSpacing: 0.6,
   },
-  bannerText: {
+  scopeText: {
     ...Typography.body,
     color: Colors.paper,
-    marginTop: 4,
-    lineHeight: 20,
+    marginTop: Spacing.xs,
+    lineHeight: 21,
+  },
+  scopeFootnote: {
+    ...Typography.caption,
+    color: Colors.textLightMuted,
+    fontSize: 11,
+    marginTop: Spacing.sm,
   },
   sectionHeader: {
     marginBottom: Spacing.sm,
   },
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.ink,
-  },
-  sectionSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    marginTop: 2,
-  },
-  emptyCard: {
-    padding: Spacing.xl,
-    alignItems: 'center',
-    marginVertical: Spacing.sm,
-  },
-  emptyText: {
-    ...Typography.body,
-    color: Colors.ash,
-    textAlign: 'center',
-  },
   resourceCard: {
-    marginBottom: Spacing.md,
     padding: Spacing.lg,
+    marginBottom: Spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -139,42 +195,59 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: Spacing.md,
   },
-  planName: {
+  productIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: Spacing.md,
+  },
+  cardHeading: {
+    flex: 1,
+    marginRight: Spacing.sm,
+  },
+  productName: {
     ...Typography.bodyBold,
     color: Colors.ink,
   },
-  metricsRow: {
+  planName: {
+    ...Typography.caption,
+    color: Colors.ash,
+    marginTop: 2,
+  },
+  metricsBox: {
     backgroundColor: Colors.bone,
     borderRadius: BorderRadius.md,
     padding: Spacing.md,
-    gap: Spacing.sm,
   },
-  metricBlock: {
-    marginBottom: 4,
+  metricRow: {
+    paddingVertical: Spacing.xs,
+  },
+  metricDivider: {
+    height: 1,
+    backgroundColor: Colors.hairline,
+    marginVertical: Spacing.xs,
   },
   metricLabel: {
-    ...Typography.captionBold,
-    fontSize: 10,
+    ...Typography.caption,
     color: Colors.ash,
-    letterSpacing: 0.5,
   },
   metricValue: {
     ...Typography.bodyBold,
     color: Colors.ink,
-    fontSize: 15,
     marginTop: 2,
   },
-  feedText: {
-    ...Typography.body,
-    color: Colors.success,
-    fontWeight: '600',
-    fontSize: 13,
-    marginTop: 2,
-  },
-  feedTextUnavailable: {
+  metricSource: {
     ...Typography.caption,
     color: Colors.ash,
-    fontStyle: 'italic',
+    fontSize: 11,
+    marginTop: 2,
+  },
+  metricUnavailable: {
+    ...Typography.caption,
+    color: Colors.ash,
     marginTop: 2,
   },
 });

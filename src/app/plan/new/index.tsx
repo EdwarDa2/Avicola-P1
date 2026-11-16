@@ -1,5 +1,5 @@
 import { useApp } from '@/application/state/AppContext';
-import { Header } from '@/components';
+import { Header, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCT_LIST } from '@/domain/calculators/scenarios';
 import { ProductCode } from '@/types';
@@ -17,8 +17,7 @@ export default function SelectProductScreen() {
   ];
 
   const handleSelectProduct = (code: ProductCode) => {
-    // En la siguiente rama se conectará con el wizard completo: consume -> scenario -> result
-    router.push(`/history` as any);
+    router.push(`/plan/create?product=${code}` as any);
   };
 
   const getUnitLabel = (product: (typeof PRODUCT_LIST)[number]) =>
@@ -49,7 +48,11 @@ export default function SelectProductScreen() {
 
         {productGroups.map((group) => (
           <View key={group.title} style={styles.productGroup}>
-            <Text style={styles.groupTitle}>{group.title}</Text>
+            <SectionTitle
+              icon={group.title === 'Huevos' ? 'egg-outline' : 'restaurant-outline'}
+              title={group.title}
+              style={styles.groupHeading}
+            />
 
             {group.products.map((prod) => {
               const optionLabel = getOptionLabel(prod);
@@ -128,9 +131,7 @@ const styles = StyleSheet.create({
   productGroup: {
     marginBottom: Spacing.lg,
   },
-  groupTitle: {
-    ...Typography.h3,
-    color: Colors.ink,
+  groupHeading: {
     marginBottom: Spacing.sm,
   },
   productCard: {

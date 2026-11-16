@@ -5,7 +5,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, BorderRadius, Spacing, Typography, Shadows } from '@/constants/theme';
 import { BasketItem } from '@/types';
 import { useApp } from '@/application/state/AppContext';
-import { Badge } from './Badge';
 
 interface AnimatedBasketItemProps {
   item: BasketItem;
@@ -23,6 +22,9 @@ export const AnimatedBasketItem: React.FC<AnimatedBasketItemProps> = ({
   const enteringAnimation = reduceMotion ? undefined : FadeInDown.duration(350).springify();
   const exitingAnimation = reduceMotion ? undefined : FadeOutUp.duration(250);
 
+  const [birdsCount, ...birdsLabelParts] = item.birdsSummaryText.split(' ');
+  const birdsLabel = birdsLabelParts.join(' ');
+
   return (
     <Animated.View
       entering={enteringAnimation}
@@ -34,63 +36,60 @@ export const AnimatedBasketItem: React.FC<AnimatedBasketItemProps> = ({
         accessible={true}
         accessibilityRole="button"
         accessibilityLabel={`Producto activo: ${item.productName}. Plan: ${item.planName}. Demanda: ${item.weeklyDemandText}. Aves: ${item.birdsSummaryText}.`}
-        style={({ pressed }) => [styles.card, { opacity: pressed ? 0.94 : 1 }]}
+        style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
       >
-        {/* Barra superior de acento de color de especie */}
-        <View style={[styles.accentStrip, { backgroundColor: item.accentColor }]} />
-
-        <View style={styles.content}>
-          <View style={styles.headerRow}>
-            <View style={styles.titleArea}>
-              <Badge
-                label="PLAN ACTIVO"
-                variant="primary"
-                size="sm"
-                style={styles.badge}
-              />
-              <Text style={styles.productName}>{item.productName}</Text>
-              <Text style={styles.planName} numberOfLines={1}>
-                {item.planName} · {item.scenarioName}
-              </Text>
-            </View>
-
-            {onDeactivate && (
-              <Pressable
-                onPress={onDeactivate}
-                accessible={true}
-                accessibilityRole="button"
-                accessibilityLabel={`Desactivar ${item.productName} de la canasta`}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-                style={styles.closeButton}
-              >
-                <Ionicons name="close-circle-outline" size={24} color={Colors.ash} />
-              </Pressable>
-            )}
+        <View style={styles.headerRow}>
+          <View style={styles.titleArea}>
+            <Text style={styles.productName}>{item.productName}</Text>
+            <Text style={styles.planMeta} numberOfLines={1}>
+              {item.planName} · {item.scenarioName}
+            </Text>
           </View>
 
-          <View style={styles.metricsGrid}>
-            <View style={styles.metricColumn}>
-              <Text style={styles.metricLabel}>DEMANDA PLANIFICADA</Text>
-              <Text style={styles.metricValue}>{item.weeklyDemandText}</Text>
-              {item.annualDemandText && (
-                <Text style={styles.metricSecondary}>{item.annualDemandText}</Text>
-              )}
-            </View>
+          {onDeactivate && (
+            <Pressable
+              onPress={onDeactivate}
+              accessible={true}
+              accessibilityRole="button"
+              accessibilityLabel={`Desactivar ${item.productName} de la canasta`}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={({ pressed }) => [styles.closeButton, pressed && styles.cardPressed]}
+            >
+              <Ionicons name="close" size={18} color={Colors.textLightMuted} />
+            </Pressable>
+          )}
+        </View>
 
-            <View style={styles.metricDivider} />
+        <View style={styles.figureRow}>
+          <View style={styles.figureBlock}>
+            <Text style={styles.figureNumber}>{birdsCount}</Text>
+            <Text style={styles.figureLabel}>{birdsLabel}</Text>
+          </View>
 
-            <View style={styles.metricColumn}>
-              <Text style={styles.metricLabel}>AVES REQUERIDAS</Text>
-              <Text style={styles.birdsValue}>{item.birdsSummaryText}</Text>
-              {item.lotsSummary && (
-                <Text style={styles.metricSecondary}>{item.lotsSummary}</Text>
-              )}
-              {item.breedingSummary && (
-                <Text style={styles.metricSecondary}>{item.breedingSummary}</Text>
-              )}
-            </View>
+          <View style={styles.demandBlock}>
+            <Text style={styles.demandValue}>{item.weeklyDemandText}</Text>
+            {item.annualDemandText ? (
+              <Text style={styles.demandSecondary}>{item.annualDemandText}</Text>
+            ) : null}
           </View>
         </View>
+
+        {(item.lotsSummary || item.breedingSummary) && (
+          <View style={styles.notesRow}>
+            {item.lotsSummary ? (
+              <View style={styles.note}>
+                <Ionicons name="grid-outline" size={14} color={Colors.primary} />
+                <Text style={styles.noteText}>{item.lotsSummary}</Text>
+              </View>
+            ) : null}
+            {item.breedingSummary ? (
+              <View style={styles.note}>
+                <Ionicons name="egg-outline" size={14} color={Colors.primary} />
+                <Text style={styles.noteText}>{item.breedingSummary}</Text>
+              </View>
+            ) : null}
+          </View>
+        )}
       </Pressable>
     </Animated.View>
   );
@@ -101,84 +100,91 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.md,
   },
   card: {
-    backgroundColor: Colors.paper,
+    backgroundColor: Colors.obsidian,
     borderRadius: BorderRadius.lg,
     borderWidth: 1,
-    borderColor: Colors.hairline,
-    overflow: 'hidden',
+    borderColor: Colors.obsidianLight,
+    padding: Spacing.lg,
     ...Shadows.sm,
   },
-  accentStrip: {
-    height: 4,
-    width: '100%',
-  },
-  content: {
-    padding: Spacing.lg,
+  cardPressed: {
+    opacity: 0.94,
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: Spacing.md,
+    justifyContent: 'space-between',
   },
   titleArea: {
     flex: 1,
-  },
-  badge: {
-    marginBottom: Spacing.xs,
+    paddingRight: Spacing.sm,
   },
   productName: {
     ...Typography.h3,
-    color: Colors.ink,
+    color: Colors.paper,
     fontSize: 17,
   },
-  planName: {
+  planMeta: {
     ...Typography.caption,
-    color: Colors.ash,
+    color: Colors.textLightMuted,
     marginTop: 2,
   },
   closeButton: {
     padding: 4,
-    marginLeft: Spacing.sm,
   },
-  metricsGrid: {
+  figureRow: {
     flexDirection: 'row',
-    backgroundColor: Colors.bone,
-    borderRadius: BorderRadius.md,
-    padding: Spacing.md,
-    alignItems: 'center',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    marginTop: Spacing.lg,
   },
-  metricColumn: {
+  figureBlock: {
     flex: 1,
+    paddingRight: Spacing.md,
   },
-  metricDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: Colors.hairline,
-    marginHorizontal: Spacing.md,
+  figureNumber: {
+    ...Typography.numberDisplayLarge,
+    color: Colors.primary,
+    fontSize: 34,
+    lineHeight: 38,
   },
-  metricLabel: {
-    ...Typography.captionBold,
-    fontSize: 10,
-    color: Colors.ash,
-    letterSpacing: 0.5,
-    marginBottom: 2,
-  },
-  metricValue: {
-    ...Typography.bodyBold,
-    color: Colors.ink,
-    fontSize: 14,
-  },
-  birdsValue: {
-    ...Typography.bodyBold,
-    color: Colors.ink,
-    fontSize: 14,
-  },
-  metricSecondary: {
+  figureLabel: {
     ...Typography.caption,
-    fontSize: 11,
-    color: Colors.ash,
+    color: Colors.paper,
     marginTop: 2,
   },
+  demandBlock: {
+    alignItems: 'flex-end',
+    flexShrink: 0,
+  },
+  demandValue: {
+    ...Typography.bodyBold,
+    color: Colors.paper,
+    fontSize: 14,
+  },
+  demandSecondary: {
+    ...Typography.caption,
+    color: Colors.textLightMuted,
+    fontSize: 11,
+    marginTop: 2,
+  },
+  notesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.md,
+    marginTop: Spacing.md,
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: Colors.obsidianLight,
+  },
+  note: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+  },
+  noteText: {
+    ...Typography.caption,
+    color: Colors.textLightMuted,
+    fontSize: 12,
+  },
 });
-

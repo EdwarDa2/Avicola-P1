@@ -1,23 +1,24 @@
 import { useApp } from '@/application/state/AppContext';
 import {
-  AnimatedBasketItem,
-  AnimatedMemberFigures,
-  Badge,
-  Button,
-  Card,
-  EmptyState,
+    AnimatedBasketItem,
+    AnimatedMemberFigures,
+    Badge,
+    Button,
+    Card,
+    EmptyState,
+    SectionTitle,
 } from '@/components';
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-  Modal,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    Modal,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -77,7 +78,12 @@ export default function HomeScreen() {
         {/* Hero Card Obsidian — Estado de la Granja / Familia Activa (Estilo Agrilo) */}
         <Card variant="obsidian" style={styles.heroCard}>
           <View style={styles.heroHeader}>
-            <Badge label="PERFIL ACTIVO" variant="primary" size="sm" />
+            <Badge
+              label="PERFIL ACTIVO"
+              variant="primary"
+              size="sm"
+              icon={<Ionicons name="person-outline" size={12} color={Colors.ink} />}
+            />
             <Pressable
               onPress={() => setShowFamilyModal(true)}
               accessible={true}
@@ -126,7 +132,7 @@ export default function HomeScreen() {
             </View>
 
             <Text style={styles.coverageFootnote}>
-              Producción estimada para autoconsumo, no inventario físico (D-05).
+              Producción estimada para autoconsumo, no inventario físico.
             </Text>
           </View>
         </Card>
@@ -141,12 +147,12 @@ export default function HomeScreen() {
 
         {/* Sección: Canasta Familiar de Producción (M06) */}
         <View style={styles.sectionHeader}>
-          <View>
-            <Text style={styles.sectionTitle}>Canasta Familiar</Text>
-            <Text style={styles.sectionSubtitle}>
-              M06 · Productos con plan activo para este hogar
-            </Text>
-          </View>
+          <SectionTitle
+            icon="basket-outline"
+            title="Canasta Familiar"
+            subtitle="Producción asignada a este hogar"
+            style={styles.sectionHeaderText}
+          />
           <Badge
             label={`${activePlansCount} activos`}
             variant={activePlansCount > 0 ? 'success' : 'muted'}
@@ -168,8 +174,7 @@ export default function HomeScreen() {
               key={item.planId}
               item={item}
               onPress={() => {
-                // Navega al detalle del plan
-                router.push('/history' as any);
+                router.push(`/plan/${item.planId}` as any);
               }}
               onDeactivate={() => {
                 // Desactiva el plan de la canasta transaccionalmente (D-05)
@@ -180,7 +185,7 @@ export default function HomeScreen() {
         )}
 
         <View style={styles.toolsSection}>
-          <Text style={styles.sectionTitle}>Herramientas</Text>
+          <SectionTitle icon="construct-outline" title="Herramientas" />
           <View style={styles.toolsList}>
             <Pressable
               onPress={() => router.push('/nutrients' as any)}
@@ -233,12 +238,12 @@ export default function HomeScreen() {
         {familyPlans.length > 0 && (
           <View style={styles.recentPlansSection}>
             <View style={styles.sectionHeader}>
-              <View>
-                <Text style={styles.sectionTitle}>Planes Recientes</Text>
-                <Text style={styles.sectionSubtitle}>
-                  Conmuta el plan activo en la canasta en un solo toque (D-05)
-                </Text>
-              </View>
+              <SectionTitle
+                icon="time-outline"
+                title="Planes Recientes"
+                subtitle="Activa el plan que quieres llevar a tu canasta"
+                style={styles.sectionHeaderText}
+              />
               <Pressable
                 onPress={() => router.push('/history' as any)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
@@ -490,15 +495,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  sectionTitle: {
-    ...Typography.h3,
-    color: Colors.ink,
-    fontSize: 18,
-  },
-  sectionSubtitle: {
-    ...Typography.caption,
-    color: Colors.ash,
-    fontSize: 12,
+  sectionHeaderText: {
+    flex: 1,
+    marginRight: Spacing.sm,
   },
   seeAllLink: {
     ...Typography.captionBold,
