@@ -686,7 +686,7 @@ export default function CreatePlanScreen() {
                         <Input
                           label="Fertilidad (%)"
                           value={breeding.fertility}
-                          onChangeText={(value) => setBreeding((prev) => ({ ...prev, fertility: value }))}
+                          editable={false}
                           keyboardType="numeric"
                           containerStyle={styles.field}
                         />
@@ -695,16 +695,14 @@ export default function CreatePlanScreen() {
                         <Input
                           label="Incubabilidad (%)"
                           value={breeding.hatchability}
-                          onChangeText={(value) =>
-                            setBreeding((prev) => ({ ...prev, hatchability: value }))
-                          }
+                          editable={false}
                           keyboardType="numeric"
                           containerStyle={styles.field}
                         />
                         <Input
                           label="Supervivencia (%)"
                           value={breeding.survival}
-                          onChangeText={(value) => setBreeding((prev) => ({ ...prev, survival: value }))}
+                          editable={false}
                           keyboardType="numeric"
                           containerStyle={styles.field}
                         />
@@ -712,9 +710,7 @@ export default function CreatePlanScreen() {
                       <Input
                         label="Proporción de hembras (%)"
                         value={breeding.femaleRatio}
-                        onChangeText={(value) =>
-                          setBreeding((prev) => ({ ...prev, femaleRatio: value }))
-                        }
+                        editable={false}
                         keyboardType="numeric"
                         containerStyle={styles.lotsInput}
                       />

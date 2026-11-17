@@ -1,14 +1,14 @@
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import React, { useState } from 'react';
 import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ViewStyle,
-  TextInputProps,
-  TextStyle,
+    StyleSheet,
+    Text,
+    TextInput,
+    TextInputProps,
+    TextStyle,
+    View,
+    ViewStyle,
 } from 'react-native';
-import { Colors, BorderRadius, Spacing, Typography } from '@/constants/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -35,12 +35,13 @@ export const Input: React.FC<InputProps> = ({
   ...restProps
 }) => {
   const [isFocused, setIsFocused] = useState(false);
+  const isDisabled = restProps.editable === false;
 
   return (
     <View style={[styles.container, containerStyle]}>
       {label && (
         <View style={[styles.labelRow, labelContainerStyle]}>
-          <Text style={styles.label}>
+          <Text style={[styles.label, isDisabled && styles.labelDisabled]}>
             {label}
             {required && <Text style={styles.requiredAsterisk}> *</Text>}
           </Text>
@@ -50,13 +51,14 @@ export const Input: React.FC<InputProps> = ({
       <View
         style={[
           styles.inputContainer,
-          isFocused && styles.inputFocused,
+          isDisabled && styles.inputContainerDisabled,
+          isFocused && !isDisabled && styles.inputFocused,
           error ? styles.inputError : null,
         ]}
       >
         {prefix && <Text style={styles.affix}>{prefix}</Text>}
         <TextInput
-          style={[styles.input, inputStyle]}
+          style={[styles.input, isDisabled && styles.inputDisabled, inputStyle]}
           placeholderTextColor={Colors.ash}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
@@ -92,6 +94,9 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: Colors.ink,
   },
+  labelDisabled: {
+    color: Colors.ash,
+  },
   requiredAsterisk: {
     color: Colors.danger,
     fontWeight: '700',
@@ -106,6 +111,10 @@ const styles = StyleSheet.create({
     minHeight: 48, // Cumple accesibilidad táctil de 48dp
     paddingHorizontal: Spacing.md,
   },
+  inputContainerDisabled: {
+    backgroundColor: Colors.bone,
+    borderColor: Colors.boneDark,
+  },
   inputFocused: {
     borderColor: Colors.ink,
     backgroundColor: '#fff',
@@ -119,6 +128,9 @@ const styles = StyleSheet.create({
     ...Typography.body,
     color: Colors.ink,
     minHeight: 44,
+  },
+  inputDisabled: {
+    color: Colors.ash,
   },
   affix: {
     ...Typography.bodyBold,
