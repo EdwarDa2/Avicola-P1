@@ -1,5 +1,5 @@
 import { useApp } from '@/application/state/AppContext';
-import { Badge, Card, EmptyState, Header, SectionTitle } from '@/components';
+import { Badge, Card, EmptyState, FormulaBreakdown, Header, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS } from '@/domain/calculators/scenarios';
 import { ProductCode } from '@/types';
@@ -26,7 +26,7 @@ const FEED_REFERENCES: Partial<Record<ProductCode, FeedReference>> = {
 
 export default function ResourcesScreen() {
   const router = useRouter();
-  const { activeFamily, basketItems } = useApp();
+  const { activeFamily, basketItems, plans } = useApp();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -44,18 +44,6 @@ export default function ResourcesScreen() {
             El alimento se estima solo cuando existe una referencia aplicable.
           </Text>
         </View>
-
-        <Card variant="obsidian" style={styles.scopeCard}>
-          <View style={styles.scopeEyebrowRow}>
-            <Ionicons name="information-circle-outline" size={14} color={Colors.primary} />
-            <Text style={styles.scopeEyebrow}>ALCANCE DE ESTA VERSIÓN</Text>
-          </View>
-          <Text style={styles.scopeText}>
-            El alimento se estima cuando hay una referencia técnica documentada por
-            especie y etapa. El agua, el espacio de alojamiento y el equipamiento se
-            incorporan en la siguiente versión.
-          </Text>
-        </Card>
 
         <View style={styles.sectionHeader}>
           <SectionTitle
@@ -76,6 +64,7 @@ export default function ResourcesScreen() {
         ) : (
           basketItems.map((item) => {
             const reference = FEED_REFERENCES[item.productCode];
+            const plan = plans.find((p) => p.id === item.planId);
 
             return (
               <Card key={item.planId} style={styles.resourceCard}>
@@ -117,11 +106,26 @@ export default function ResourcesScreen() {
                       </>
                     ) : (
                       <Text style={styles.metricUnavailable}>
-                        Requiere tabla de consumo por edad y etapa (siguiente versión)
+                        Requiere tabla de consumo por edad y etapa
                       </Text>
                     )}
                   </View>
                 </View>
+
+                {plan && (
+                  <View style={styles.formulaSection}>
+                    <SectionTitle
+                      icon="calculator-outline"
+                      title="Cómo se calculó"
+                      size="block"
+                    />
+                    <View style={styles.blockSpacer} />
+                    <FormulaBreakdown
+                      formulaText={plan.results.formulaText}
+                      variables={plan.results.formulaVariables}
+                    />
+                  </View>
+                )}
               </Card>
             );
           })
@@ -154,33 +158,18 @@ const styles = StyleSheet.create({
     color: Colors.ash,
     marginTop: Spacing.xs,
   },
-  scopeCard: {
-    padding: Spacing.lg,
-    marginBottom: Spacing.lg,
-  },
-  scopeEyebrowRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  scopeEyebrow: {
-    ...Typography.captionBold,
-    color: Colors.primary,
-    fontSize: 11,
-    letterSpacing: 0.6,
-  },
-  scopeText: {
-    ...Typography.body,
-    color: Colors.paper,
-    marginTop: Spacing.xs,
-    lineHeight: 21,
-  },
   sectionHeader: {
     marginBottom: Spacing.sm,
   },
   resourceCard: {
     padding: Spacing.lg,
     marginBottom: Spacing.md,
+  },
+  formulaSection: {
+    marginTop: Spacing.lg,
+  },
+  blockSpacer: {
+    height: Spacing.md,
   },
   cardHeader: {
     flexDirection: 'row',
