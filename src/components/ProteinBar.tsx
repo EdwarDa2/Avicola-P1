@@ -1,13 +1,13 @@
-import React, { useEffect } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  withTiming,
-  Easing,
-} from 'react-native-reanimated';
-import { Colors, BorderRadius, Spacing, Typography } from '@/constants/theme';
 import { useApp } from '@/application/state/AppContext';
+import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
+import React, { useEffect } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import Animated, {
+    Easing,
+    useAnimatedStyle,
+    useSharedValue,
+    withTiming,
+} from 'react-native-reanimated';
 
 interface ProteinBarProps {
   proteinGrams: number;
@@ -81,15 +81,6 @@ export const ProteinBar: React.FC<ProteinBarProps> = ({
         <Text style={styles.scaleText}>45g</Text>
         <Text style={styles.scaleText}>{maxScale}g+</Text>
       </View>
-
-      {/* Nota obligatoria de trazabilidad y salud (D-07, RF-43) */}
-      <View style={styles.disclaimerBox}>
-        <Text style={styles.disclaimerText}>
-          Aporte aproximado según tablas de composición. La escala es meramente
-          ilustrativa y no constituye una meta universal ni sustituye una evaluación
-          nutricional individual (D-07).
-        </Text>
-      </View>
     </View>
   );
 };
@@ -157,23 +148,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     paddingHorizontal: 2,
-    marginBottom: Spacing.md,
   },
   scaleText: {
     ...Typography.caption,
     fontSize: 10,
     color: Colors.ash,
-  },
-  disclaimerBox: {
-    backgroundColor: Colors.bone,
-    borderRadius: BorderRadius.sm,
-    padding: Spacing.sm,
-  },
-  disclaimerText: {
-    ...Typography.caption,
-    fontSize: 11,
-    color: Colors.ash,
-    lineHeight: 15,
   },
 });
 
