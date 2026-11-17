@@ -2,18 +2,20 @@ import { useApp } from '@/application/state/AppContext';
 import { Badge, Card, EmptyState, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS, PRODUCT_LIST } from '@/domain/calculators/scenarios';
-import type { Plan, ProductCode } from '@/types';
+import type { Plan } from '@/types';
+import { ProductCode } from '@/types';
+import { formatNumber } from '@/utils/format';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    StyleSheet,
+    Text,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -340,8 +342,8 @@ export default function PlansScreen() {
                       <Text style={styles.metricLabel}>DEMANDA</Text>
                       <Text style={styles.metricValue}>
                         {isEggProduct
-                          ? `${plan.results.weeklyDemand} huevos / semana`
-                          : `${plan.results.weeklyDemand} kg / semana`}
+                          ? `${formatNumber(plan.results.weeklyDemand)} huevos / semana`
+                          : `${formatNumber(plan.results.weeklyDemand)} kg / semana`}
                       </Text>
                     </View>
 

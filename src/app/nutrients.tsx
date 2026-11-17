@@ -1,6 +1,6 @@
 import { Card, Header, Input, ProteinBar, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
-import { calculateProteinGrams } from '@/domain/calculators';
+import { calculateProtein } from '@/domain/calculators';
 import { NUTRIENT_REFERENCES, PRODUCTS } from '@/domain/calculators/scenarios';
 import { ProductCode } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
@@ -26,8 +26,18 @@ export default function NutrientsScreen() {
   const nutrientRef = NUTRIENT_REFERENCES[selectedProduct];
   const isEggProduct = PRODUCTS[selectedProduct].purpose === 'eggs';
 
-  const amountNum = Math.max(0, parseFloat(portionAmount) || 0);
-  const proteinGrams = calculateProteinGrams(selectedProduct, amountNum);
+  const amountNum = parseFloat(portionAmount.replace(',', '.')) || 0;
+
+  let proteinGrams = 0;
+  let proteinError = '';
+  try {
+    proteinGrams = calculateProtein(selectedProduct, amountNum);
+  } catch (error) {
+    proteinError =
+      error instanceof Error
+        ? error.message
+        : 'No se pudo calcular la proteína de esta porción.';
+  }
 
   const handleSelectProduct = (code: ProductCode) => {
     setSelectedProduct(code);
@@ -109,12 +119,24 @@ export default function NutrientsScreen() {
           />
         </Card>
 
-        <ProteinBar
-          proteinGrams={proteinGrams}
-          foodName={nutrientRef.foodName}
-          portionDescription={`${amountNum} ${isEggProduct ? 'unidades' : 'g'}`}
-          maxScale={60}
-        />
+        {proteinError ? (
+          <View
+            style={styles.errorBox}
+            accessible={true}
+            accessibilityRole="alert"
+            accessibilityLabel={`No se pudo calcular la proteína: ${proteinError}`}
+          >
+            <Ionicons name="alert-circle-outline" size={16} color={Colors.danger} />
+            <Text style={styles.errorText}>{proteinError}</Text>
+          </View>
+        ) : (
+          <ProteinBar
+            proteinGrams={proteinGrams}
+            foodName={nutrientRef.foodName}
+            portionDescription={`${amountNum} ${isEggProduct ? 'unidades' : 'g'}`}
+            maxScale={60}
+          />
+        )}
 
         <Card variant="obsidian" style={styles.referenceCard}>
           <View style={styles.referenceEyebrowRow}>
@@ -193,6 +215,22 @@ const styles = StyleSheet.create({
   },
   cardHeading: {
     marginBottom: Spacing.md,
+  },
+  errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.xs,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    borderColor: Colors.danger,
+    backgroundColor: Colors.dangerLight,
+    marginVertical: Spacing.sm,
+  },
+  errorText: {
+    ...Typography.body,
+    color: Colors.danger,
+    flexShrink: 1,
   },
   referenceCard: {
     padding: Spacing.lg,

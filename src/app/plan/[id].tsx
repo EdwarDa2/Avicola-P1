@@ -12,6 +12,7 @@ import {
 } from '@/components';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS } from '@/domain/calculators/scenarios';
+import { formatNumber, formatPercent } from '@/utils/format';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -164,7 +165,7 @@ export default function PlanDetailScreen() {
           <View style={styles.metricRow}>
             <Text style={styles.metricLabel}>Demanda semanal</Text>
             <Text style={styles.metricValue}>
-              {result.weeklyDemand} {product.purpose === 'eggs' ? 'huevos' : 'kg'}
+              {formatNumber(result.weeklyDemand)} {product.purpose === 'eggs' ? 'huevos' : 'kg'}
             </Text>
           </View>
           {result.annualDemand !== undefined && (
@@ -172,7 +173,7 @@ export default function PlanDetailScreen() {
               <View style={styles.metricDivider} />
               <View style={styles.metricRow}>
                 <Text style={styles.metricLabel}>Demanda anual (52 semanas)</Text>
-                <Text style={styles.metricValue}>{result.annualDemand} kg</Text>
+                <Text style={styles.metricValue}>{formatNumber(result.annualDemand)} kg</Text>
               </View>
             </>
           )}
@@ -236,22 +237,22 @@ export default function PlanDetailScreen() {
                 {
                   symbol: 'f',
                   meaning: 'Fertilidad',
-                  value: `${(plan.reproduction.fertility * 100).toFixed(0)} %`,
+                  value: formatPercent(plan.reproduction.fertility),
                 },
                 {
                   symbol: 'h',
                   meaning: 'Incubabilidad',
-                  value: `${(plan.reproduction.hatchability * 100).toFixed(0)} %`,
+                  value: formatPercent(plan.reproduction.hatchability),
                 },
                 {
                   symbol: 's',
                   meaning: 'Supervivencia',
-                  value: `${(plan.reproduction.survival * 100).toFixed(0)} %`,
+                  value: formatPercent(plan.reproduction.survival),
                 },
                 {
                   symbol: 'p_female',
                   meaning: 'Proporción de hembras',
-                  value: `${(plan.reproduction.femaleRatio * 100).toFixed(0)} %`,
+                  value: formatPercent(plan.reproduction.femaleRatio),
                 },
               ]}
               caption="Cada símbolo del cálculo reproductivo:"
