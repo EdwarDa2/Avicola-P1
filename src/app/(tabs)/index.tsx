@@ -11,8 +11,9 @@ import {
 import { BorderRadius, Colors, Shadows, Spacing, Typography } from '@/constants/theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
+    Alert,
     Modal,
     Pressable,
     ScrollView,
@@ -21,34 +22,70 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 export default function HomeScreen() {
   const router = useRouter();
   const {
     families,
     activeFamily,
     activeFamilyId,
-    selectFamily,
+    selectFamilySaved,
+    familiesLoading,
     basketItems,
     plans,
-    togglePlanActive,
+    togglePlanActiveSaved,
+    plansLoading,
   } = useApp();
-
   const [showFamilyModal, setShowFamilyModal] = useState(false);
-
+  const [switchingFamily, setSwitchingFamily] = useState(false);
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const familyBusyRef = useRef(false);
+  const planBusyRef = useRef(false);
   const activePlansCount = basketItems.length;
   const coveragePercent = (activePlansCount / 4) * 100;
-
   // Planes de la familia activa
   const familyPlans = activeFamilyId
     ? plans.filter((p) => p.familyId === activeFamilyId)
     : [];
-
-  const handleSelectFamilyFromModal = (familyId: string) => {
-    selectFamily(familyId);
-    setShowFamilyModal(false);
+  // Guardar primero en SQLite y después actualizar la selección visual.
+  const handleSelectFamilyFromModal = async (familyId: string) => {
+    if (familyBusyRef.current || familiesLoading) return;
+    familyBusyRef.current = true;
+    setSwitchingFamily(true);
+    try {
+      await selectFamilySaved(familyId);
+      setShowFamilyModal(false);
+      console.log('Familia seleccionada desde Inicio en SQLite:', familyId);
+    } catch (error) {
+      console.error('Error al seleccionar familia desde Inicio:', error);
+      Alert.alert(
+        'No se pudo cambiar de familia',
+        error instanceof Error ? error.message : 'Inténtalo nuevamente.'
+      );
+    } finally {
+      familyBusyRef.current = false;
+      setSwitchingFamily(false);
+    }
   };
 
+  // Ambas acciones de Inicio pasan por la misma operación persistente.
+  const handleTogglePlan = async (planId: string) => {
+    if (planBusyRef.current || plansLoading) return;
+    planBusyRef.current = true;
+    setPendingPlanId(planId);
+    try {
+      await togglePlanActiveSaved(planId);
+      console.log('Estado del plan actualizado desde Inicio en SQLite:', planId);
+    } catch (error) {
+      console.error('Error al actualizar plan desde Inicio:', error);
+      Alert.alert(
+        'No se pudo actualizar la canasta',
+        error instanceof Error ? error.message : 'Inténtalo nuevamente.'
+      );
+    } finally {
+      planBusyRef.current = false;
+      setPendingPlanId(null);
+    }
+  };
   return (
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.container}>
@@ -63,7 +100,6 @@ export default function HomeScreen() {
               <Text style={styles.brandSubtitle}>Autoconsumo y Granjas Familiares</Text>
             </View>
           </View>
-
           <Pressable
             onPress={() => router.push('/help' as any)}
             accessible={true}
@@ -74,7 +110,6 @@ export default function HomeScreen() {
             <Ionicons name="help-circle-outline" size={24} color={Colors.ink} />
           </Pressable>
         </View>
-
         {/* Hero Card Obsidian — Estado de la Granja / Familia Activa (Estilo Agrilo) */}
         <Card variant="obsidian" style={styles.heroCard}>
           <View style={styles.heroHeader}>
@@ -95,11 +130,9 @@ export default function HomeScreen() {
               <Text style={styles.changeFamilyText}>Cambiar</Text>
             </Pressable>
           </View>
-
           <Text style={styles.heroFamilyName}>
             {activeFamily ? activeFamily.name : 'Sin familia seleccionada'}
           </Text>
-
           {activeFamily ? (
             <View style={styles.familyFiguresContainer}>
               <AnimatedMemberFigures
@@ -112,7 +145,6 @@ export default function HomeScreen() {
               Selecciona o crea una familia para comenzar la planificación.
             </Text>
           )}
-
           {/* Barra de Cobertura de la Canasta Familiar */}
           <View style={styles.coverageBox}>
             <View style={styles.coverageLabelRow}>
@@ -121,7 +153,6 @@ export default function HomeScreen() {
                 {activePlansCount} de 4 productos
               </Text>
             </View>
-
             <View style={styles.progressBarTrack}>
               <View
                 style={[
@@ -130,13 +161,11 @@ export default function HomeScreen() {
                 ]}
               />
             </View>
-
             <Text style={styles.coverageFootnote}>
               Producción estimada para autoconsumo, no inventario físico.
             </Text>
           </View>
         </Card>
-
         {/* Botón Principal CTA: Nuevo Plan */}
         <Button
           title="+ Planificar Nuevo Producto"
@@ -144,7 +173,6 @@ export default function HomeScreen() {
           variant="primary"
           style={styles.newPlanBtn}
         />
-
         {/* Sección: Canasta Familiar de Producción (M06) */}
         <View style={styles.sectionHeader}>
           <SectionTitle
@@ -159,7 +187,6 @@ export default function HomeScreen() {
             size="sm"
           />
         </View>
-
         {basketItems.length === 0 ? (
           <EmptyState
             iconName="basket-outline"
@@ -177,13 +204,11 @@ export default function HomeScreen() {
                 router.push(`/plan/${item.planId}` as any);
               }}
               onDeactivate={() => {
-                // Desactiva el plan de la canasta transaccionalmente (D-05)
-                togglePlanActive(item.planId);
+                void handleTogglePlan(item.planId);
               }}
             />
           ))
         )}
-
         <View style={styles.toolsSection}>
           <SectionTitle icon="construct-outline" title="Herramientas" />
           <View style={styles.toolsList}>
@@ -209,7 +234,6 @@ export default function HomeScreen() {
               </View>
               <Ionicons name="chevron-forward" size={18} color={Colors.ash} />
             </Pressable>
-
             <Pressable
               onPress={() => router.push('/resources' as any)}
               accessible={true}
@@ -233,7 +257,6 @@ export default function HomeScreen() {
             </Pressable>
           </View>
         </View>
-
         {/* Sección: Planes Recientes de la Familia */}
         {familyPlans.length > 0 && (
           <View style={styles.recentPlansSection}>
@@ -251,7 +274,6 @@ export default function HomeScreen() {
                 <Text style={styles.seeAllLink}>Ver todos ({familyPlans.length})</Text>
               </Pressable>
             </View>
-
             {familyPlans.slice(0, 3).map((plan) => {
               const isPlanActive = basketItems.some((b) => b.planId === plan.id);
               return (
@@ -268,10 +290,10 @@ export default function HomeScreen() {
                       {plan.results.scenarioName}
                     </Text>
                   </View>
-
                   <Button
-                    title={isPlanActive ? 'Activo' : 'Activar'}
-                    onPress={() => togglePlanActive(plan.id)}
+                    title={pendingPlanId === plan.id ? 'Guardando...' : isPlanActive ? 'Activo' : 'Activar'}
+                    onPress={() => { void handleTogglePlan(plan.id); }}
+                    disabled={plansLoading || pendingPlanId !== null}
                     variant={isPlanActive ? 'secondary' : 'primary'}
                     style={styles.toggleActiveBtn}
                   />
@@ -281,26 +303,24 @@ export default function HomeScreen() {
           </View>
         )}
       </ScrollView>
-
       {/* Modal de Cambio Rápido de Familia */}
       <Modal
         visible={showFamilyModal}
         transparent={true}
         animationType="fade"
-        onRequestClose={() => setShowFamilyModal(false)}
+        onRequestClose={() => { if (!switchingFamily) setShowFamilyModal(false); }}
       >
         <Pressable
           style={styles.modalBackdrop}
-          onPress={() => setShowFamilyModal(false)}
+          onPress={() => { if (!switchingFamily) setShowFamilyModal(false); }}
         >
           <Pressable style={styles.modalDialog} onPress={(e) => e.stopPropagation()}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Cambiar Familia Activa</Text>
-              <Pressable onPress={() => setShowFamilyModal(false)}>
+              <Pressable onPress={() => { if (!switchingFamily) setShowFamilyModal(false); }}>
                 <Ionicons name="close" size={24} color={Colors.ink} />
               </Pressable>
             </View>
-
             <ScrollView style={styles.modalList}>
               {families
                 .filter((f) => !f.archived)
@@ -313,7 +333,8 @@ export default function HomeScreen() {
                   return (
                     <Pressable
                       key={fam.id}
-                      onPress={() => handleSelectFamilyFromModal(fam.id)}
+                      onPress={() => { void handleSelectFamilyFromModal(fam.id); }}
+                      disabled={switchingFamily || familiesLoading}
                       style={[
                         styles.familyOption,
                         isCurrent && styles.familyOptionActive,
@@ -342,7 +363,6 @@ export default function HomeScreen() {
                   );
                 })}
             </ScrollView>
-
             <Button
               title="+ Registrar Otra Familia"
               onPress={() => {
@@ -358,7 +378,6 @@ export default function HomeScreen() {
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
