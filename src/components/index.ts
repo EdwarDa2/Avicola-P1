@@ -10,6 +10,6 @@ export * from './FormulaBreakdown';
 export * from './Header';
 export * from './Input';
 export * from './LotGrid';
-export * from './ProteinBar';
+export * from './ProteinGauge';
 export * from './SectionTitle';
 

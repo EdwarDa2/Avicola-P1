@@ -1,4 +1,4 @@
-import { Card, Header, Input, ProteinBar, SectionTitle } from '@/components';
+import { Card, FormulaBreakdown, Header, Input, ProteinGauge, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { calculateProtein } from '@/domain/calculators';
 import { NUTRIENT_REFERENCES, PRODUCTS } from '@/domain/calculators/scenarios';
@@ -43,6 +43,46 @@ export default function NutrientsScreen() {
     setSelectedProduct(code);
     setPortionAmount(DEFAULT_PORTIONS[code]);
   };
+
+  const proteinFormulaText = isEggProduct
+    ? 'P_aporte = n × P_unidad'
+    : 'P_aporte = (g_porcion × P_base) ÷ 100';
+
+  const proteinFormulaVariables = isEggProduct
+    ? [
+        {
+          symbol: 'P_aporte',
+          meaning: 'Proteína aportada',
+          value: `${proteinGrams.toFixed(1)} g`,
+        },
+        {
+          symbol: 'n',
+          meaning: 'Huevos consumidos',
+          value: `${amountNum} huevos`,
+        },
+        {
+          symbol: 'P_unidad',
+          meaning: 'Proteína de referencia por huevo',
+          value: `${nutrientRef.proteinPerBasis} g`,
+        },
+      ]
+    : [
+        {
+          symbol: 'P_aporte',
+          meaning: 'Proteína aportada',
+          value: `${proteinGrams.toFixed(1)} g`,
+        },
+        {
+          symbol: 'g_porcion',
+          meaning: 'Carne cocida consumida',
+          value: `${amountNum} g`,
+        },
+        {
+          symbol: 'P_base',
+          meaning: 'Proteína de referencia por 100 g cocidos',
+          value: `${nutrientRef.proteinPerBasis} g`,
+        },
+      ];
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -130,12 +170,27 @@ export default function NutrientsScreen() {
             <Text style={styles.errorText}>{proteinError}</Text>
           </View>
         ) : (
-          <ProteinBar
-            proteinGrams={proteinGrams}
-            foodName={nutrientRef.foodName}
-            portionDescription={`${amountNum} ${isEggProduct ? 'unidades' : 'g'}`}
-            maxScale={60}
-          />
+          <>
+            <ProteinGauge
+              proteinGrams={proteinGrams}
+              foodName={nutrientRef.foodName}
+              portionDescription={`${amountNum} ${isEggProduct ? 'unidades' : 'g'}`}
+              maxScale={60}
+            />
+
+            <Card style={styles.sectionCard}>
+              <SectionTitle
+                icon="calculator-outline"
+                title="Cómo se calculó"
+                size="block"
+                style={styles.cardHeading}
+              />
+              <FormulaBreakdown
+                formulaText={proteinFormulaText}
+                variables={proteinFormulaVariables}
+              />
+            </Card>
+          </>
         )}
 
         <Card variant="obsidian" style={styles.referenceCard}>
@@ -146,7 +201,6 @@ export default function NutrientsScreen() {
           <Text style={styles.referenceValue}>
             {nutrientRef.proteinPerBasis} g de proteína {nutrientRef.basisDescription}
           </Text>
-          <Text style={styles.referenceSource}>Fuente: {nutrientRef.source}</Text>
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -252,10 +306,5 @@ const styles = StyleSheet.create({
     color: Colors.paper,
     fontSize: 16,
     marginVertical: Spacing.xs,
-  },
-  referenceSource: {
-    ...Typography.caption,
-    color: Colors.textLightMuted,
-    fontSize: 11,
   },
 });
