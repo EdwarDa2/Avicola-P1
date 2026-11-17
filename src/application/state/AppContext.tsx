@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 import { familyService } from '../services/family.service';
+import { planPersistenceService } from '../services/plan-persistence.service';
 
 import type {
   Family,
@@ -32,6 +33,8 @@ interface AppContextType {
   familyStorageError: string | null;
 
   plans: Plan[];
+  plansLoading: boolean;
+  planStorageError: string | null;
   basketItems: BasketItem[];
 
   reduceMotion: boolean;
@@ -91,6 +94,15 @@ interface AppContextType {
   deletePlan: (planId: string) => void;
   togglePlanActive: (planId: string) => void;
 
+  savePlanSaved: (
+    planData: Omit<Plan, 'id' | 'createdAt' | 'updatedAt'>,
+    setActiveInBasket?: boolean
+  ) => Promise<Plan>;
+
+  duplicatePlanSaved: (planId: string) => Promise<Plan>;
+  deletePlanSaved: (planId: string) => Promise<void>;
+  togglePlanActiveSaved: (planId: string) => Promise<void>;
+
   getActivePlanForProduct: (
     productCode: ProductCode
   ) => Plan | null;
@@ -135,6 +147,8 @@ export const AppProvider: React.FC<{
   // ==========================================
 
   const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [planStorageError, setPlanStorageError] = useState<string | null>(null);
 
   // "familyId:productCode" -> planId
   const [
@@ -225,6 +239,41 @@ export const AppProvider: React.FC<{
           validSelection ? selectedId : fallbackId
         );
 
+        // Recuperar todos los planes de todas las familias,
+        // incluidas las archivadas: el historial no debe perderlos.
+        try {
+          setPlanStorageError(null);
+          const savedPlans = await planPersistenceService.getAllForFamilies(
+            savedFamilies.map((family) => family.id)
+          );
+
+          if (!mounted) return;
+
+          setPlans(savedPlans);
+
+          // Recuperar la selección de la canasta a partir del
+          // estado persistido. El plan más reciente tiene prioridad.
+          const selections: Record<string, string> = {};
+          for (const plan of savedPlans) {
+            if (plan.status !== 'active') continue;
+            const key = `${plan.familyId}:${plan.productCode}`;
+            if (!selections[key]) selections[key] = plan.id;
+          }
+          setActiveProductPlansMap(selections);
+          console.log('PLANES RECUPERADOS DE SQLITE:', savedPlans.length);
+        } catch (error) {
+          if (!mounted) return;
+          console.error('Error al cargar planes de SQLite:', error);
+          setPlanStorageError(
+            error instanceof Error
+              ? error.message
+              : 'No se pudieron cargar los planes'
+          );
+        } finally {
+          if (mounted) setPlansLoading(false);
+        }
+
+
       } catch (error) {
         if (!mounted) return;
 
@@ -238,6 +287,8 @@ export const AppProvider: React.FC<{
             ? error.message
             : 'No se pudieron cargar las familias'
         );
+        setPlanStorageError('No fue posible cargar las familias');
+        setPlansLoading(false);
 
       } finally {
         if (mounted) {
@@ -270,6 +321,16 @@ export const AppProvider: React.FC<{
     }
   };
 
+
+  const assertPlansReady = () => {
+    assertFamiliesReady();
+    if (plansLoading) {
+      throw new Error('Los planes todavía se están cargando');
+    }
+    if (planStorageError) {
+      throw new Error('No se pudo cargar el historial: ' + planStorageError);
+    }
+  };
 
   const activeFamily = useMemo(() => {
     return (
@@ -806,6 +867,158 @@ export const AppProvider: React.FC<{
   };
 
   // ==========================================
+  // OPERACIONES PERSISTENTES DE PLANES (SQLITE)
+  // ==========================================
+
+  const savePlanSaved = async (
+    planData: Omit<Plan, 'id' | 'createdAt' | 'updatedAt'>,
+    setActiveInBasket: boolean = true
+  ): Promise<Plan> => {
+    assertPlansReady();
+    const familyExists = families.some(
+      (family) => family.id === planData.familyId && !family.archived
+    );
+    if (!familyExists) {
+      throw new Error('Selecciona una familia activa para guardar el plan');
+    }
+
+    const now = new Date().toISOString();
+    const newPlan: Plan = {
+      ...planData,
+      id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      status: setActiveInBasket ? 'active' : 'inactive',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    // Guardar primero. Nunca anunciar éxito antes de SQLite.
+    const saved = await planPersistenceService.create(newPlan);
+
+    if (setActiveInBasket) {
+      const oldActive = plans.filter(
+        (plan) =>
+          plan.familyId === saved.familyId &&
+          plan.productCode === saved.productCode &&
+          plan.status === 'active'
+      );
+
+      try {
+        for (const old of oldActive) {
+          await planPersistenceService.updateStatus(old.id, 'inactive');
+        }
+      } catch (error) {
+        // Si falla el cambio de estado, no dejamos un plan
+        // nuevo activado a medias sin informar el problema.
+        await planPersistenceService.remove(saved.id).catch((rollbackError) => {
+          console.error('No se pudo revertir el nuevo plan:', rollbackError);
+        });
+        throw error;
+      }
+
+      const oldIds = new Set(oldActive.map((plan) => plan.id));
+      setPlans((prev) => [
+        saved,
+        ...prev.map((plan) =>
+          oldIds.has(plan.id)
+            ? { ...plan, status: 'inactive' as const, updatedAt: now }
+            : plan
+        ),
+      ]);
+      setActiveProductPlansMap((prev) => ({
+        ...prev,
+        [`${saved.familyId}:${saved.productCode}`]: saved.id,
+      }));
+    } else {
+      setPlans((prev) => [saved, ...prev]);
+    }
+
+    console.log('PLAN GUARDADO EN SQLITE:', saved.id);
+    return saved;
+  };
+
+  const duplicatePlanSaved = async (planId: string): Promise<Plan> => {
+    assertPlansReady();
+    const original = plans.find((plan) => plan.id === planId);
+    if (!original) throw new Error('Plan no encontrado');
+
+    const now = new Date().toISOString();
+    const copy: Plan = {
+      ...original,
+      id: `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      name: `${original.name} (Copia)`,
+      status: 'inactive',
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    const saved = await planPersistenceService.create(copy);
+    setPlans((prev) => [saved, ...prev]);
+    return saved;
+  };
+
+  const deletePlanSaved = async (planId: string): Promise<void> => {
+    assertPlansReady();
+    const target = plans.find((plan) => plan.id === planId);
+    if (!target) throw new Error('Plan no encontrado');
+
+    await planPersistenceService.remove(planId);
+    setPlans((prev) => prev.filter((plan) => plan.id !== planId));
+    setActiveProductPlansMap((prev) => {
+      const key = `${target.familyId}:${target.productCode}`;
+      if (prev[key] !== planId) return prev;
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+  };
+
+  const togglePlanActiveSaved = async (planId: string): Promise<void> => {
+    assertPlansReady();
+    const target = plans.find((plan) => plan.id === planId);
+    if (!target) throw new Error('Plan no encontrado');
+    if (target.status === 'archived') {
+      throw new Error('No puedes activar un plan archivado');
+    }
+
+    const key = `${target.familyId}:${target.productCode}`;
+    const selectedId = activeProductPlansMap[key];
+
+    if (selectedId === planId) {
+      const updated = await planPersistenceService.updateStatus(planId, 'inactive');
+      setPlans((prev) => prev.map((plan) => plan.id === planId ? updated : plan));
+      setActiveProductPlansMap((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      return;
+    }
+
+    // Puede existir otro plan activo de este mismo producto.
+    const oldActive = plans.filter(
+      (plan) =>
+        plan.id !== target.id &&
+        plan.familyId === target.familyId &&
+        plan.productCode === target.productCode &&
+        plan.status === 'active'
+    );
+    // Persistir el elegido antes de cambiar la interfaz.
+    const updated = await planPersistenceService.updateStatus(planId, 'active');
+    for (const old of oldActive) {
+      await planPersistenceService.updateStatus(old.id, 'inactive');
+    }
+    const oldIds = new Set(oldActive.map((p) => p.id));
+    setPlans((prev) => prev.map((plan) =>
+      plan.id === planId
+        ? updated
+        : oldIds.has(plan.id)
+          ? { ...plan, status: 'inactive' as const }
+          : plan
+    ));
+    setActiveProductPlansMap((prev) => ({ ...prev, [key]: planId }));
+  };
+
+  // ==========================================
   // 18. OBTENER PLAN ACTIVO POR PRODUCTO
   // ==========================================
 
@@ -842,6 +1055,8 @@ export const AppProvider: React.FC<{
         familyStorageError,
 
         plans,
+        plansLoading,
+        planStorageError,
         basketItems,
 
         reduceMotion,
@@ -863,6 +1078,10 @@ export const AppProvider: React.FC<{
         duplicatePlan,
         deletePlan,
         togglePlanActive,
+        savePlanSaved,
+        duplicatePlanSaved,
+        deletePlanSaved,
+        togglePlanActiveSaved,
         getActivePlanForProduct,
       }}
     >
