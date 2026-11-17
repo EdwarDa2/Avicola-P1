@@ -5,10 +5,11 @@ import { initializeDatabase } from './migrations/001_initial';
 
 import { migrateFamilyMetadata } from './migrations/002_family_metadata';
 
+import { migratePlanCompatibility } from './migrations/003_plan_compatibility';
+
 const DATABASE_NAME = 'planificador_avicola.db';
 
-let databasePromise: Promise<SQLite.SQLiteDatabase> | null =
-  null;
+let databasePromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
 export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (!databasePromise) {
@@ -17,11 +18,14 @@ export function getDatabase(): Promise<SQLite.SQLiteDatabase> {
         DATABASE_NAME
       );
 
-      // Crear la estructura inicial
+    
       await initializeDatabase(db);
 
-      // Aplicar la migración de familias
+    
       await migrateFamilyMetadata(db);
+
+       
+      await migratePlanCompatibility(db);
 
       return db;
     })().catch((error) => {

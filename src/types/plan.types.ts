@@ -1,13 +1,18 @@
 
 export type ProductionType =
-  | 'chicken_eggs'
-  | 'broiler'
-  | 'quail_eggs';
+  | 'chicken_eggs'   
+  | 'broiler'       
+  | 'hen_eggs'
+  | 'chicken_meat'
+  | 'quail_eggs'
+  | 'quail_meat';
 
 export type PlanStatus =
   | 'draft'
   | 'active'
-  | 'completed';
+  | 'completed'
+  | 'inactive'
+  | 'archived';
 
 export type PlanData = Record<string, unknown>;
 
