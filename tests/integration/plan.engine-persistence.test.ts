@@ -410,3 +410,83 @@ describe('2) consistencia: el motor reproduce lo guardado a partir de input_json
     });
   }
 });
+
+// ============================================
+// 3) Errores del motor antes de guardar
+// ============================================
+
+/** Primera línea de la familia de huevos de gallina con un campo alterado. */
+function henEggsWith(change: Partial<ConsumptionLine>): ConsumptionLine[] {
+  const [first, ...rest] = HEN_EGGS_FAMILY();
+  return [{ ...first, ...change }, ...rest];
+}
+
+const ERROR_CASES: { title: string; spec: PlanSpec; message: string }[] = [
+  {
+    title: 'días por semana = 8',
+    spec: { id: 'plan-err-days-8', productCode: 'hen_eggs', lines: henEggsWith({ daysPerWeek: 8 }), scenarioKey: 'hen_intermediate' },
+    message: 'Los días por semana deben estar entre 0 y 7 (CP-16).',
+  },
+  {
+    title: 'días por semana = 3.5',
+    spec: { id: 'plan-err-days-3.5', productCode: 'hen_eggs', lines: henEggsWith({ daysPerWeek: 3.5 }), scenarioKey: 'hen_intermediate' },
+    message: 'Los días por semana deben ser un número entero (se recibió 3.5).',
+  },
+  {
+    title: 'número de personas negativo',
+    spec: { id: 'plan-err-negative', productCode: 'hen_eggs', lines: henEggsWith({ peopleCount: -1 }), scenarioKey: 'hen_intermediate' },
+    message: 'El número de personas no puede ser negativo (CP-17).',
+  },
+  {
+    title: 'porción NaN',
+    spec: { id: 'plan-err-nan', productCode: 'hen_eggs', lines: henEggsWith({ portionQty: Number.NaN }), scenarioKey: 'hen_intermediate' },
+    message: 'La porción de consumo debe ser un número finito (se recibió NaN).',
+  },
+  {
+    title: 'más lotes que aves (192 codornices en 193 lotes)',
+    spec: {
+      id: 'plan-err-lots',
+      productCode: 'quail_meat',
+      lines: QUAIL_MEAT_FAMILY(),
+      scenarioKey: 'quail_meat_reference',
+      lotsCount: 193,
+    },
+    message: 'No se pueden repartir 192 aves en 193 lotes sin dejar lotes vacíos: usa como máximo 192 lotes.',
+  },
+  {
+    title: 'reproducción con R = 2.5',
+    spec: {
+      id: 'plan-err-breeding',
+      productCode: 'quail_eggs',
+      lines: QUAIL_EGGS_FAMILY(),
+      scenarioKey: 'quail_intermediate',
+      breeding: { ...BREEDING_CP10, desiredFemales: 2.5 },
+    },
+    message: 'La cantidad de hembras deseadas debe ser un número entero (se recibió 2.5).',
+  },
+  {
+    title: 'escenario de otro producto (codorniz para gallina)',
+    spec: { id: 'plan-err-scenario', productCode: 'hen_eggs', lines: HEN_EGGS_FAMILY(), scenarioKey: 'quail_intermediate' },
+    message: 'El escenario quail_intermediate pertenece a quail_eggs y no se puede usar para hen_eggs.',
+  },
+];
+
+describe('3) errores del motor: se rechazan antes de guardar', () => {
+  for (const item of ERROR_CASES) {
+    test(item.title, async () => {
+      const { sqlite, plans } = await openDatabase();
+      try {
+        // async: buildPlan lanza de forma síncrona, como el motor en la pantalla.
+        await assert.rejects(async () => saveAndLoad(plans, buildPlan(item.spec)), {
+          name: 'Error',
+          message: item.message,
+        });
+
+        assert.equal(countPlans(sqlite), 0);
+        assert.equal(await plans.findById(item.spec.id), null);
+      } finally {
+        sqlite.close();
+      }
+    });
+  }
+});
