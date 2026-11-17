@@ -1,5 +1,5 @@
 import { useApp } from '@/application/state/AppContext';
-import { Badge, Card, EmptyState, SectionTitle } from '@/components';
+import { Badge, Button, Card, EmptyState, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS, PRODUCT_LIST } from '@/domain/calculators/scenarios';
 import type { Plan } from '@/types';
@@ -9,13 +9,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -435,6 +435,16 @@ export default function PlansScreen() {
             );
           })
         )}
+
+        <Button
+          title="+ Planificar Nuevo Producto"
+          variant="primary"
+          fullWidth
+          onPress={() => router.push('/plan/new' as any)}
+          accessibilityLabel="Crear un nuevo plan de producción"
+          accessibilityHint="Abre el asistente para definir un nuevo plan"
+          style={styles.createButton}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -462,6 +472,9 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: Spacing.sm,
     paddingBottom: Spacing.sm,
+  },
+  createButton: {
+    marginTop: Spacing.lg,
   },
   chip: {
     flexDirection: 'row',
