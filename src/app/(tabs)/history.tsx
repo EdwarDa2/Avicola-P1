@@ -1,8 +1,10 @@
 import { useApp } from '@/application/state/AppContext';
-import { Badge, Card, EmptyState, SectionTitle } from '@/components';
+import { Badge, Button, Card, EmptyState, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS, PRODUCT_LIST } from '@/domain/calculators/scenarios';
-import type { Plan, ProductCode } from '@/types';
+import type { Plan } from '@/types';
+import { ProductCode } from '@/types';
+import { formatNumber } from '@/utils/format';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
@@ -340,8 +342,8 @@ export default function PlansScreen() {
                       <Text style={styles.metricLabel}>DEMANDA</Text>
                       <Text style={styles.metricValue}>
                         {isEggProduct
-                          ? `${plan.results.weeklyDemand} huevos / semana`
-                          : `${plan.results.weeklyDemand} kg / semana`}
+                          ? `${formatNumber(plan.results.weeklyDemand)} huevos / semana`
+                          : `${formatNumber(plan.results.weeklyDemand)} kg / semana`}
                       </Text>
                     </View>
 
@@ -433,6 +435,16 @@ export default function PlansScreen() {
             );
           })
         )}
+
+        <Button
+          title="+ Planificar Nuevo Producto"
+          variant="primary"
+          fullWidth
+          onPress={() => router.push('/plan/new' as any)}
+          accessibilityLabel="Crear un nuevo plan de producción"
+          accessibilityHint="Abre el asistente para definir un nuevo plan"
+          style={styles.createButton}
+        />
       </ScrollView>
     </SafeAreaView>
   );
@@ -460,6 +472,9 @@ const styles = StyleSheet.create({
   filterRow: {
     gap: Spacing.sm,
     paddingBottom: Spacing.sm,
+  },
+  createButton: {
+    marginTop: Spacing.lg,
   },
   chip: {
     flexDirection: 'row',

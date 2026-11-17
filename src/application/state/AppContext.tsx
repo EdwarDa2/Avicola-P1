@@ -1,9 +1,9 @@
 import React, {
   createContext,
   useContext,
-  useState,
   useEffect,
   useMemo,
+  useState,
 } from 'react';
 
 import type { ReactNode } from 'react';
@@ -14,14 +14,15 @@ import { familyService } from '../services/family.service';
 import { planPersistenceService } from '../services/plan-persistence.service';
 
 import type {
+  AgeGroupKey,
+  BasketItem,
   Family,
   Plan,
-  AgeGroupKey,
   ProductCode,
-  BasketItem,
 } from '@/types';
 
 import { PRODUCTS } from '@/domain/calculators/scenarios';
+import { formatNumber } from '@/utils/format';
 
 
 interface AppContextType {
@@ -391,13 +392,15 @@ export const AppProvider: React.FC<{
         code === 'quail_eggs'
       ) {
         weeklyText =
-          `${res.weeklyDemand} huevos / semana`;
+          `${formatNumber(res.weeklyDemand)} huevos / semana`;
       } else {
         weeklyText =
-          `${res.weeklyDemand} kg / semana`;
+          `${formatNumber(res.weeklyDemand)} kg / semana`;
 
         annualText =
-          `${res.annualDemand} kg / año`;
+          res.annualDemand !== undefined
+            ? `${formatNumber(res.annualDemand)} kg / año`
+            : undefined;
       }
 
       items.push({

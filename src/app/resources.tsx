@@ -55,7 +55,6 @@ export default function ResourcesScreen() {
             especie y etapa. El agua, el espacio de alojamiento y el equipamiento se
             incorporan en la siguiente versión.
           </Text>
-          <Text style={styles.scopeFootnote}>Decisión D-06 · Requisitos RF-33 a RF-40</Text>
         </Card>
 
         <View style={styles.sectionHeader}>
@@ -175,12 +174,6 @@ const styles = StyleSheet.create({
     color: Colors.paper,
     marginTop: Spacing.xs,
     lineHeight: 21,
-  },
-  scopeFootnote: {
-    ...Typography.caption,
-    color: Colors.textLightMuted,
-    fontSize: 11,
-    marginTop: Spacing.sm,
   },
   sectionHeader: {
     marginBottom: Spacing.sm,

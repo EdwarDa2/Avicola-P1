@@ -1,48 +1,49 @@
 import { useApp } from '@/application/state/AppContext';
 import {
-    Badge,
-    Button,
-    Card,
-    EmptyState,
-    FormulaBreakdown,
-    Header,
-    Input,
-    LotGrid,
-    SectionTitle
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  FormulaBreakdown,
+  Header,
+  Input,
+  LotGrid,
+  SectionTitle
 } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import {
-    calculateChickenMeat,
-    calculateHens,
-    calculateQuailEggs,
-    calculateQuailMeat,
-    calculateQuailBreeding,
-    FORMULA_VERSION,
-    calculateWeeklyEggsDemand,
-    calculateWeeklyMeatDemand,
-    distributeLots,
+  calculateChickenMeat,
+  calculateHens,
+  calculateQuailBreeding,
+  calculateQuailEggs,
+  calculateQuailMeat,
+  calculateWeeklyEggsDemand,
+  calculateWeeklyMeatDemand,
+  distributeLots,
+  FORMULA_VERSION,
 } from '@/domain/calculators';
 import { PRODUCTS, SCENARIOS } from '@/domain/calculators/scenarios';
 import {
-    AGE_GROUPS,
-    AgeGroupKey,
-    CalculationResult,
-    ConsumptionLine,
-    LotDistribution,
-    ProductCode,
-    QuailReproductionResult,
+  AGE_GROUPS,
+  AgeGroupKey,
+  CalculationResult,
+  ConsumptionLine,
+  LotDistribution,
+  ProductCode,
+  QuailReproductionResult,
 } from '@/types';
+import { formatNumber, formatPercent } from '@/utils/format';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useMemo, useRef, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -66,9 +67,13 @@ interface GroupInput {
   days: string;
 }
 
-const toNumber = (value: string): number => {
-  const parsed = Number(value.replace(',', '.'));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
+/**
+ * Convierte el texto de un campo en número sin ocultar lo inválido (RF-15): los negativos y los
+ * textos no numéricos llegan al motor, que los rechaza y devuelve el motivo para mostrarlo.
+ */
+const parseInput = (value: string): number => {
+  const normalized = value.replace(',', '.').trim();
+  return normalized === '' ? 0 : Number(normalized);
 };
 
 const buildDefaultInputs = (purpose: 'eggs' | 'meat'): Record<AgeGroupKey, GroupInput> => {
@@ -135,10 +140,10 @@ export default function CreatePlanScreen() {
     return AGE_GROUPS.filter((group) => (ageCounts[group.key] ?? 0) > 0).map((group) => ({
       ageGroup: group.key,
       peopleCount: ageCounts[group.key],
-      portionQty: toNumber(inputs[group.key].portion),
+      portionQty: parseInput(inputs[group.key].portion),
       portionUnit: product.purpose === 'eggs' ? 'piezas' : 'gramos',
-      occasionsPerDay: toNumber(inputs[group.key].occasions),
-      daysPerWeek: toNumber(inputs[group.key].days),
+      occasionsPerDay: parseInput(inputs[group.key].occasions),
+      daysPerWeek: parseInput(inputs[group.key].days),
     }));
   }, [ageCounts, inputs, product.purpose]);
 
@@ -157,30 +162,53 @@ export default function CreatePlanScreen() {
     }
   }, [lines, product.purpose]);
 
-  const lots: LotDistribution | null = useMemo(() => {
-    if (!includeLots || !result) return null;
-    const count = Math.floor(toNumber(lotsInput));
+  // El motor valida y explica: aquí solo se guarda su mensaje para mostrarlo (INTEGRACION.md §4).
+  const lotsOutcome = useMemo((): { lots: LotDistribution | null; message: string } => {
+    if (!includeLots || !result) return { lots: null, message: '' };
     try {
-      return distributeLots(result.primaryBirdsCount, count);
-    } catch {
-      return null;
+      return {
+        lots: distributeLots(result.primaryBirdsCount, Math.floor(parseInput(lotsInput))),
+        message: '',
+      };
+    } catch (error) {
+      return {
+        lots: null,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'No se pudieron repartir las aves en lotes.',
+      };
     }
   }, [includeLots, lotsInput, result]);
+  const lots = lotsOutcome.lots;
 
-  const reproduction: QuailReproductionResult | null = useMemo(() => {
-    if (!includeBreeding) return null;
+  const breedingOutcome = useMemo((): {
+    reproduction: QuailReproductionResult | null;
+    message: string;
+  } => {
+    if (!includeBreeding) return { reproduction: null, message: '' };
     try {
-      return calculateQuailBreeding(
-        toNumber(breeding.females),
-        toNumber(breeding.fertility) / 100,
-        toNumber(breeding.hatchability) / 100,
-        toNumber(breeding.survival) / 100,
-        toNumber(breeding.femaleRatio) / 100
-      );
-    } catch {
-      return null;
+      return {
+        reproduction: calculateQuailBreeding(
+          parseInput(breeding.females),
+          parseInput(breeding.fertility) / 100,
+          parseInput(breeding.hatchability) / 100,
+          parseInput(breeding.survival) / 100,
+          parseInput(breeding.femaleRatio) / 100
+        ),
+        message: '',
+      };
+    } catch (error) {
+      return {
+        reproduction: null,
+        message:
+          error instanceof Error
+            ? error.message
+            : 'No se pudo calcular el reemplazo reproductivo.',
+      };
     }
   }, [includeBreeding, breeding]);
+  const reproduction = breedingOutcome.reproduction;
 
   const reproductionVariables = reproduction
     ? [
@@ -197,22 +225,22 @@ export default function CreatePlanScreen() {
         {
           symbol: 'f',
           meaning: 'Fertilidad',
-          value: `${(reproduction.fertility * 100).toFixed(0)} %`,
+          value: formatPercent(reproduction.fertility),
         },
         {
           symbol: 'h',
           meaning: 'Incubabilidad',
-          value: `${(reproduction.hatchability * 100).toFixed(0)} %`,
+          value: formatPercent(reproduction.hatchability),
         },
         {
           symbol: 's',
           meaning: 'Supervivencia',
-          value: `${(reproduction.survival * 100).toFixed(0)} %`,
+          value: formatPercent(reproduction.survival),
         },
         {
           symbol: 'p_female',
           meaning: 'Proporción de hembras',
-          value: `${(reproduction.femaleRatio * 100).toFixed(0)} %`,
+          value: formatPercent(reproduction.femaleRatio),
         },
       ]
     : [];
@@ -365,7 +393,7 @@ export default function CreatePlanScreen() {
                   <Text style={styles.demandLabel}>DEMANDA ESTIMADA</Text>
                 </View>
                 <Text style={styles.demandValue}>
-                  {demand.error ? '—' : demand.value}
+                  {demand.error ? '—' : formatNumber(demand.value)}
                 </Text>
                 <Text style={styles.demandUnit}>
                   {product.purpose === 'eggs' ? 'huevos por semana' : 'kg de carne por semana'}
@@ -468,21 +496,21 @@ export default function CreatePlanScreen() {
                     <View style={styles.scenarioParams}>
                       {params2.layingRate !== undefined && (
                         <Text style={styles.scenarioParam}>
-                          Postura {(params2.layingRate * 100).toFixed(0)} %
+                          Postura {formatPercent(params2.layingRate)}
                         </Text>
                       )}
                       {params2.meatYieldKg !== undefined && (
                         <Text style={styles.scenarioParam}>
-                          Rendimiento {params2.meatYieldKg} kg/ave
+                          Rendimiento {formatNumber(params2.meatYieldKg)} kg/ave
                         </Text>
                       )}
                       {params2.mortalityRate !== undefined && (
                         <Text style={styles.scenarioParam}>
-                          Mortalidad {(params2.mortalityRate * 100).toFixed(0)} %
+                          Mortalidad {formatPercent(params2.mortalityRate)}
                         </Text>
                       )}
                       <Text style={styles.scenarioParam}>
-                        Margen {(params2.safetyMargin * 100).toFixed(0)} %
+                        Margen {formatPercent(params2.safetyMargin)}
                       </Text>
                     </View>
 
@@ -530,7 +558,7 @@ export default function CreatePlanScreen() {
                 <View style={styles.metricRow}>
                   <Text style={styles.metricLabel}>Demanda semanal</Text>
                   <Text style={styles.metricValue}>
-                    {result.weeklyDemand} {product.purpose === 'eggs' ? 'huevos' : 'kg'}
+                    {formatNumber(result.weeklyDemand)} {product.purpose === 'eggs' ? 'huevos' : 'kg'}
                   </Text>
                 </View>
                 {result.annualDemand !== undefined && (
@@ -538,7 +566,9 @@ export default function CreatePlanScreen() {
                     <View style={styles.metricDivider} />
                     <View style={styles.metricRow}>
                       <Text style={styles.metricLabel}>Demanda anual (52 semanas)</Text>
-                      <Text style={styles.metricValue}>{result.annualDemand} kg</Text>
+                      <Text style={styles.metricValue}>
+                        {formatNumber(result.annualDemand)} kg
+                      </Text>
                     </View>
                   </>
                 )}
@@ -611,8 +641,8 @@ export default function CreatePlanScreen() {
                       {lots ? (
                         <LotGrid birdsPerLot={lots.birdsPerLot} totalBirds={lots.totalBirds} />
                       ) : (
-                        <Text style={styles.invalidText}>
-                          Introduce un número de lotes entero mayor a cero.
+                        <Text style={styles.invalidText} accessibilityRole="alert">
+                          {lotsOutcome.message}
                         </Text>
                       )}
                     </>
@@ -695,8 +725,8 @@ export default function CreatePlanScreen() {
                           <Text style={styles.breedingLabel}>huevos fértiles a incubar</Text>
                         </View>
                       ) : (
-                        <Text style={styles.invalidText}>
-                          Verifica que los porcentajes estén entre 1 % y 100 %.
+                        <Text style={styles.invalidText} accessibilityRole="alert">
+                          {breedingOutcome.message}
                         </Text>
                       )}
 
