@@ -2,14 +2,24 @@ import { useApp } from '@/application/state/AppContext';
 import { Badge, Card, EmptyState, SectionTitle } from '@/components';
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS, PRODUCT_LIST } from '@/domain/calculators/scenarios';
-import { ProductCode } from '@/types';
+import type { Plan, ProductCode } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Alert,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
+
+type ActionName = 'toggle' | 'duplicate' | 'delete';
 
 const STATUS_FILTERS: {
   key: StatusFilter;
@@ -23,10 +33,26 @@ const STATUS_FILTERS: {
 
 export default function PlansScreen() {
   const router = useRouter();
-  const { activeFamily, activeFamilyId, plans, getActivePlanForProduct } = useApp();
+
+  const {
+    activeFamily,
+    activeFamilyId,
+    familiesLoading,
+    plans,
+    plansLoading,
+    planStorageError,
+    getActivePlanForProduct,
+    duplicatePlanSaved,
+    deletePlanSaved,
+    togglePlanActiveSaved,
+  } = useApp();
 
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [productFilter, setProductFilter] = useState<ProductCode | 'all'>('all');
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  const busyRef = useRef(false);
+
+  const isLoading = familiesLoading || plansLoading;
 
   const familyPlans = activeFamilyId
     ? plans.filter((plan) => plan.familyId === activeFamilyId)
@@ -38,11 +64,70 @@ export default function PlansScreen() {
   const visiblePlans = familyPlans.filter((plan) => {
     const active = isPlanActive(plan.productCode, plan.id);
     const matchesStatus =
-      statusFilter === 'all' || (statusFilter === 'active' ? active : !active);
+      statusFilter === 'all' ||
+      (statusFilter === 'active' ? active : !active);
     const matchesProduct =
       productFilter === 'all' || plan.productCode === productFilter;
+
     return matchesStatus && matchesProduct;
   });
+
+  const getErrorMessage = (error: unknown) =>
+    error instanceof Error ? error.message : 'Inténtalo nuevamente.';
+
+  const runAction = async (
+    action: ActionName,
+    plan: Plan
+  ): Promise<void> => {
+    if (busyRef.current || isLoading || planStorageError) return;
+
+    busyRef.current = true;
+    setPendingAction(`${action}:${plan.id}`);
+
+    try {
+      if (action === 'toggle') {
+        await togglePlanActiveSaved(plan.id);
+        console.log('Estado del plan guardado en SQLite:', plan.id);
+      } else if (action === 'duplicate') {
+        const copy = await duplicatePlanSaved(plan.id);
+        console.log('Plan duplicado en SQLite:', copy.id);
+        Alert.alert('Plan duplicado', 'La copia aparece en tu historial como inactiva.');
+      } else {
+        await deletePlanSaved(plan.id);
+        console.log('Plan eliminado de SQLite:', plan.id);
+      }
+    } catch (error) {
+      console.error(`Error en ${action} del plan:`, error);
+      Alert.alert('No se pudo completar la operación', getErrorMessage(error));
+    } finally {
+      busyRef.current = false;
+      setPendingAction(null);
+    }
+  };
+
+  const handleDelete = (plan: Plan) => {
+    if (busyRef.current || isLoading) return;
+
+    Alert.alert(
+      '¿Eliminar plan?',
+      `¿Deseas eliminar «${plan.name}»? Esta acción no se puede deshacer.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar',
+          style: 'destructive',
+          onPress: () => {
+            void runAction('delete', plan);
+          },
+        },
+      ]
+    );
+  };
+
+  const openPlan = (planId: string) => {
+    if (busyRef.current) return;
+    router.push(`/plan/${planId}` as any);
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -61,7 +146,7 @@ export default function PlansScreen() {
           />
         </View>
 
-        {familyPlans.length > 0 && (
+        {!isLoading && !planStorageError && familyPlans.length > 0 && (
           <>
             <ScrollView
               horizontal
@@ -70,6 +155,7 @@ export default function PlansScreen() {
             >
               {STATUS_FILTERS.map((filter) => {
                 const selected = statusFilter === filter.key;
+
                 return (
                   <Pressable
                     key={filter.key}
@@ -85,7 +171,12 @@ export default function PlansScreen() {
                       size={14}
                       color={selected ? Colors.ink : Colors.ash}
                     />
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        selected && styles.chipTextSelected,
+                      ]}
+                    >
                       {filter.label}
                     </Text>
                   </Pressable>
@@ -104,7 +195,10 @@ export default function PlansScreen() {
                 accessibilityRole="button"
                 accessibilityState={{ selected: productFilter === 'all' }}
                 accessibilityLabel="Filtrar por todos los productos"
-                style={[styles.chip, productFilter === 'all' && styles.chipSelected]}
+                style={[
+                  styles.chip,
+                  productFilter === 'all' && styles.chipSelected,
+                ]}
               >
                 <Ionicons
                   name="apps-outline"
@@ -134,11 +228,20 @@ export default function PlansScreen() {
                     style={[styles.chip, selected && styles.chipSelected]}
                   >
                     <Ionicons
-                      name={product.purpose === 'eggs' ? 'egg-outline' : 'restaurant-outline'}
+                      name={
+                        product.purpose === 'eggs'
+                          ? 'egg-outline'
+                          : 'restaurant-outline'
+                      }
                       size={14}
                       color={selected ? Colors.ink : Colors.ash}
                     />
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        selected && styles.chipTextSelected,
+                      ]}
+                    >
                       {product.name}
                     </Text>
                   </Pressable>
@@ -148,7 +251,27 @@ export default function PlansScreen() {
           </>
         )}
 
-        {familyPlans.length === 0 ? (
+        {isLoading ? (
+          <View style={styles.statusContainer}>
+            <ActivityIndicator size="large" color={Colors.accent} />
+            <Text style={styles.statusText}>Recuperando planes guardados...</Text>
+          </View>
+        ) : planStorageError ? (
+          <View style={styles.statusContainer}>
+            <Ionicons name="alert-circle-outline" size={30} color={Colors.danger} />
+            <Text style={styles.statusText}>
+              No se pudo cargar el historial. {planStorageError}
+            </Text>
+          </View>
+        ) : !activeFamily ? (
+          <EmptyState
+            iconName="people-outline"
+            title="Selecciona una familia"
+            description="Elige una familia activa para consultar sus planes guardados."
+            actionTitle="Ir a familias"
+            onAction={() => router.push('/families' as any)}
+          />
+        ) : familyPlans.length === 0 ? (
           <EmptyState
             iconName="layers-outline"
             title="Aún no hay planes guardados"
@@ -172,55 +295,139 @@ export default function PlansScreen() {
             const product = PRODUCTS[plan.productCode];
             const isEggProduct = product.purpose === 'eggs';
             const active = isPlanActive(plan.productCode, plan.id);
+            const archived = plan.status === 'archived';
+            const busy = pendingAction !== null;
+            const actionForPlan = pendingAction?.endsWith(`:${plan.id}`) ?? false;
 
             return (
-              <Card
-                key={plan.id}
-                style={styles.planCard}
-                onPress={() => router.push(`/plan/${plan.id}` as any)}
-                accessibilityLabel={`Abrir plan ${plan.name}, ${product.name}`}
-              >
-                <View style={styles.planHeader}>
-                  <View style={styles.planIcon}>
-                    <Ionicons
-                      name={isEggProduct ? 'egg-outline' : 'restaurant-outline'}
-                      size={18}
-                      color={Colors.ink}
+              <Card key={plan.id} style={styles.planCard}>
+                {/* El enlace al detalle está separado de las acciones para
+                    evitar que un toque en Eliminar abra también el plan. */}
+                <Pressable
+                  onPress={() => openPlan(plan.id)}
+                  disabled={busy}
+                  accessible={true}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Abrir plan ${plan.name}, ${product.name}`}
+                >
+                  <View style={styles.planHeader}>
+                    <View style={styles.planIcon}>
+                      <Ionicons
+                        name={isEggProduct ? 'egg-outline' : 'restaurant-outline'}
+                        size={18}
+                        color={Colors.ink}
+                      />
+                    </View>
+
+                    <View style={styles.planHeading}>
+                      <Text style={styles.planName} numberOfLines={1}>
+                        {plan.name}
+                      </Text>
+                      <Text style={styles.planMeta} numberOfLines={1}>
+                        {product.name} · {plan.results.scenarioName}
+                      </Text>
+                    </View>
+
+                    <Badge
+                      label={archived ? 'Archivado' : active ? 'Activo' : 'Inactivo'}
+                      variant={active ? 'primary' : 'muted'}
+                      size="sm"
                     />
                   </View>
-                  <View style={styles.planHeading}>
-                    <Text style={styles.planName} numberOfLines={1}>
-                      {plan.name}
-                    </Text>
-                    <Text style={styles.planMeta} numberOfLines={1}>
-                      {product.name} · {plan.results.scenarioName}
-                    </Text>
-                  </View>
-                  <Badge
-                    label={active ? 'Activo' : 'Inactivo'}
-                    variant={active ? 'primary' : 'muted'}
-                    size="sm"
-                  />
-                </View>
 
-                <View style={styles.metricsBox}>
-                  <View style={styles.metricColumn}>
-                    <Text style={styles.metricLabel}>DEMANDA</Text>
-                    <Text style={styles.metricValue}>
-                      {isEggProduct
-                        ? `${plan.results.weeklyDemand} huevos / semana`
-                        : `${plan.results.weeklyDemand} kg / semana`}
-                    </Text>
-                  </View>
+                  <View style={styles.metricsBox}>
+                    <View style={styles.metricColumn}>
+                      <Text style={styles.metricLabel}>DEMANDA</Text>
+                      <Text style={styles.metricValue}>
+                        {isEggProduct
+                          ? `${plan.results.weeklyDemand} huevos / semana`
+                          : `${plan.results.weeklyDemand} kg / semana`}
+                      </Text>
+                    </View>
 
-                  <View style={styles.metricDivider} />
+                    <View style={styles.metricDivider} />
 
-                  <View style={styles.metricColumn}>
-                    <Text style={styles.metricLabel}>
-                      {plan.results.primaryBirdsLabel.toUpperCase()}
-                    </Text>
-                    <Text style={styles.metricValue}>{plan.results.primaryBirdsCount}</Text>
+                    <View style={styles.metricColumn}>
+                      <Text style={styles.metricLabel}>
+                        {plan.results.primaryBirdsLabel.toUpperCase()}
+                      </Text>
+                      <Text style={styles.metricValue}>
+                        {plan.results.primaryBirdsCount}
+                      </Text>
+                    </View>
                   </View>
+                </Pressable>
+
+                {/* Acciones persistentes de SQLite */}
+                <View style={styles.actionsRow}>
+                  {!archived && (
+                    <Pressable
+                      onPress={() => {
+                        void runAction('toggle', plan);
+                      }}
+                      disabled={busy}
+                      accessible={true}
+                      accessibilityRole="button"
+                      accessibilityLabel={
+                        `${active ? 'Desactivar' : 'Activar'} plan ${plan.name}`
+                      }
+                      style={({ pressed }) => [
+                        styles.actionButton,
+                        { opacity: pressed || busy ? 0.6 : 1 },
+                      ]}
+                    >
+                      <Ionicons
+                        name={active ? 'pause-circle-outline' : 'checkmark-circle-outline'}
+                        size={17}
+                        color={Colors.accent}
+                      />
+                      <Text style={styles.actionText}>
+                        {actionForPlan && pendingAction?.startsWith('toggle:')
+                          ? 'Guardando...'
+                          : active ? 'Desactivar' : 'Activar'}
+                      </Text>
+                    </Pressable>
+                  )}
+
+                  <Pressable
+                    onPress={() => {
+                      void runAction('duplicate', plan);
+                    }}
+                    disabled={busy}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Duplicar plan ${plan.name}`}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      { opacity: pressed || busy ? 0.6 : 1 },
+                    ]}
+                  >
+                    <Ionicons name="copy-outline" size={17} color={Colors.ink} />
+                    <Text style={styles.actionText}>
+                      {actionForPlan && pendingAction?.startsWith('duplicate:')
+                        ? 'Duplicando...'
+                        : 'Duplicar'}
+                    </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={() => handleDelete(plan)}
+                    disabled={busy}
+                    accessible={true}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Eliminar plan ${plan.name}`}
+                    style={({ pressed }) => [
+                      styles.actionButton,
+                      { opacity: pressed || busy ? 0.6 : 1 },
+                    ]}
+                  >
+                    <Ionicons name="trash-outline" size={17} color={Colors.danger} />
+                    <Text style={[styles.actionText, { color: Colors.danger }]}>
+                      {actionForPlan && pendingAction?.startsWith('delete:')
+                        ? 'Eliminando...'
+                        : 'Eliminar'}
+                    </Text>
+                  </Pressable>
                 </View>
               </Card>
             );
@@ -335,5 +542,37 @@ const styles = StyleSheet.create({
     ...Typography.bodyBold,
     color: Colors.ink,
     fontSize: 14,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+    borderTopWidth: 1,
+    borderTopColor: Colors.hairline,
+    paddingTop: Spacing.sm,
+    marginTop: Spacing.md,
+    gap: Spacing.sm,
+  },
+  actionButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 40,
+    paddingHorizontal: Spacing.xs,
+    gap: 4,
+  },
+  actionText: {
+    ...Typography.captionBold,
+    color: Colors.ink,
+  },
+  statusContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: Spacing.xl,
+  },
+  statusText: {
+    ...Typography.caption,
+    color: Colors.ash,
+    textAlign: 'center',
+    marginTop: Spacing.md,
   },
 });

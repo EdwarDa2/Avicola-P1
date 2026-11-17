@@ -13,10 +13,11 @@ import {
 import { BorderRadius, Colors, Spacing, Typography } from '@/constants/theme';
 import {
     calculateChickenMeat,
-    calculateHenEggs,
+    calculateHens,
     calculateQuailEggs,
     calculateQuailMeat,
-    calculateQuailReproduction,
+    calculateQuailBreeding,
+    FORMULA_VERSION,
     calculateWeeklyEggsDemand,
     calculateWeeklyMeatDemand,
     distributeLots,
@@ -33,7 +34,7 @@ import {
 } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import {
     KeyboardAvoidingView,
     Platform,
@@ -44,8 +45,6 @@ import {
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const MODEL_VERSION = 'V1.0';
 
 type Step = 'consume' | 'scenario' | 'result';
 
@@ -92,7 +91,7 @@ const buildDefaultInputs = (purpose: 'eggs' | 'meat'): Record<AgeGroupKey, Group
 export default function CreatePlanScreen() {
   const router = useRouter();
   const params = useLocalSearchParams<{ product?: string }>();
-  const { activeFamily, savePlan } = useApp();
+  const { activeFamily, savePlanSaved, plansLoading, planStorageError } = useApp();
 
   const rawProduct = params.product as ProductCode | undefined;
   const productCode: ProductCode = rawProduct && PRODUCTS[rawProduct] ? rawProduct : 'hen_eggs';
@@ -110,6 +109,8 @@ export default function CreatePlanScreen() {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [planName, setPlanName] = useState('');
   const [saveError, setSaveError] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const savingRef = useRef(false);
 
   const [includeLots, setIncludeLots] = useState(false);
   const [lotsInput, setLotsInput] = useState('3');
@@ -169,7 +170,7 @@ export default function CreatePlanScreen() {
   const reproduction: QuailReproductionResult | null = useMemo(() => {
     if (!includeBreeding) return null;
     try {
-      return calculateQuailReproduction(
+      return calculateQuailBreeding(
         toNumber(breeding.females),
         toNumber(breeding.fertility) / 100,
         toNumber(breeding.hatchability) / 100,
@@ -257,7 +258,7 @@ export default function CreatePlanScreen() {
     try {
       const computed =
         productCode === 'hen_eggs'
-          ? calculateHenEggs(lines, scenarioKey)
+          ? calculateHens(lines, scenarioKey)
           : productCode === 'quail_eggs'
             ? calculateQuailEggs(lines, scenarioKey)
             : productCode === 'chicken_meat'
@@ -270,28 +271,49 @@ export default function CreatePlanScreen() {
     }
   };
 
-  const handleSave = () => {
-    if (!result) return;
-    const finalName =
-      planName.trim() || `${product.name} · ${result.scenarioName}`;
+  const handleSave = async () => {
+    if (!result || savingRef.current || !canSave) return;
+    if (plansLoading) {
+      setSaveError('Los planes todavía se están cargando.');
+      return;
+    }
+    if (planStorageError) {
+      setSaveError(`No se pudo cargar el almacenamiento: ${planStorageError}`);
+      return;
+    }
 
-    savePlan(
-      {
-        familyId: activeFamily.id,
-        productCode,
-        name: finalName,
-        status: 'active',
-        modelVersion: MODEL_VERSION,
-        consumptionLines: lines,
-        scenarioKey,
-        results: result,
-        lots: lots ?? undefined,
-        reproduction: reproduction ?? undefined,
-      },
-      true
-    );
+    savingRef.current = true;
+    setIsSaving(true);
+    setSaveError('');
+    const finalName = planName.trim() || `${product.name} · ${result.scenarioName}`;
 
-    router.replace('/history' as any);
+    try {
+      const saved = await savePlanSaved(
+        {
+          familyId: activeFamily.id,
+          productCode,
+          name: finalName,
+          status: 'active',
+          modelVersion: FORMULA_VERSION,
+          consumptionLines: lines,
+          scenarioKey,
+          results: result,
+          lots: lots ?? undefined,
+          reproduction: reproduction ?? undefined,
+        },
+        true
+      );
+      console.log('Plan confirmado en SQLite:', saved.id);
+      router.replace('/history' as any);
+    } catch (error) {
+      setSaveError(
+        error instanceof Error ? error.message : 'No se pudo guardar el plan.'
+      );
+      console.error('Error al guardar el plan:', error);
+    } finally {
+      savingRef.current = false;
+      setIsSaving(false);
+    }
   };
 
   const canSave = Boolean(result) && !(includeLots && !lots) && !(includeBreeding && !reproduction);
@@ -711,10 +733,10 @@ export default function CreatePlanScreen() {
               ) : null}
 
               <Button
-                title="Guardar plan"
-                onPress={handleSave}
+                title={isSaving ? "Guardando..." : "Guardar plan"}
+                onPress={() => { void handleSave(); }}
                 variant="primary"
-                disabled={!canSave}
+                disabled={!canSave || isSaving || plansLoading || Boolean(planStorageError)}
                 style={styles.primaryButton}
               />
               <Button

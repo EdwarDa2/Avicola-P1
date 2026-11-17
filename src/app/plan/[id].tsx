@@ -1,69 +1,134 @@
 import { useApp } from '@/application/state/AppContext';
 import {
-    Badge,
-    Button,
-    Card,
-    ConfirmModal,
-    EmptyState,
-    FormulaBreakdown,
-    Header,
-    LotGrid,
-    SectionTitle
+  Badge,
+  Button,
+  Card,
+  ConfirmModal,
+  EmptyState,
+  FormulaBreakdown,
+  Header,
+  LotGrid,
+  SectionTitle
 } from '@/components';
 import { Colors, Spacing, Typography } from '@/constants/theme';
 import { PRODUCTS } from '@/domain/calculators/scenarios';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
 export default function PlanDetailScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { plans, getActivePlanForProduct, togglePlanActive, duplicatePlan, deletePlan } = useApp();
-
+  const {
+    plans,
+    plansLoading,
+    planStorageError,
+    togglePlanActiveSaved,
+    duplicatePlanSaved,
+    deletePlanSaved,
+  } = useApp();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  const plan = plans.find((item) => item.id === id);
-
+  const [pendingAction, setPendingAction] = useState<
+    'toggle' | 'duplicate' | 'delete' | null
+  >(null);
+  const busyRef = useRef(false);
+  const planId = Array.isArray(id) ? id[0] : id;
+  const plan = plans.find((item) => item.id === planId);
   if (!plan) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <Header title="Detalle del plan" showBack={true} onBack={() => router.back()} />
         <View style={styles.centered}>
-          <EmptyState
-            iconName="document-text-outline"
-            title="Plan no encontrado"
-            description="Este plan ya no está disponible en el historial de la familia activa."
-            actionTitle="Volver a mis planes"
-            onAction={() => router.replace('/history' as any)}
-          />
+          {plansLoading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator size="large" color={Colors.accent} />
+              <Text style={styles.loadingText}>Cargando plan guardado...</Text>
+            </View>
+          ) : (
+            <EmptyState
+              iconName={planStorageError ? 'alert-circle-outline' : 'document-text-outline'}
+              title={planStorageError ? 'No se pudieron cargar los planes' : 'Plan no encontrado'}
+              description={
+                planStorageError ||
+                'Este plan ya no está disponible en el historial.'
+              }
+              actionTitle="Volver a mis planes"
+              onAction={() => router.replace('/history' as any)}
+            />
+          )}
         </View>
       </SafeAreaView>
     );
   }
-
   const product = PRODUCTS[plan.productCode];
   const result = plan.results;
-  const isActive = getActivePlanForProduct(plan.productCode)?.id === plan.id;
+  // Fuente de verdad: estado persistido del plan (no la selección temporal de React).
+  const isActive = plan.status === 'active';
+  const isArchived = plan.status === 'archived';
   const savedOn = new Date(plan.createdAt).toLocaleDateString('es-MX', {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
   });
-
-  const handleDuplicate = () => {
-    const copy = duplicatePlan(plan.id);
-    router.replace(`/plan/${copy.id}` as any);
+  const handleToggleActive = async () => {
+    if (busyRef.current || isArchived) return;
+    busyRef.current = true;
+    setPendingAction('toggle');
+    try {
+      await togglePlanActiveSaved(plan.id);
+      console.log('Estado del plan actualizado desde Detalle en SQLite:', plan.id);
+    } catch (error) {
+      console.error('Error al activar o desactivar plan:', error);
+      Alert.alert(
+        'No se pudo actualizar la canasta',
+        error instanceof Error ? error.message : 'Inténtalo nuevamente.'
+      );
+    } finally {
+      busyRef.current = false;
+      setPendingAction(null);
+    }
   };
-
-  const handleDeleteConfirm = () => {
-    setShowDeleteModal(false);
-    deletePlan(plan.id);
-    router.replace('/history' as any);
+  const handleDuplicate = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setPendingAction('duplicate');
+    try {
+      const copy = await duplicatePlanSaved(plan.id);
+      console.log('Plan duplicado desde Detalle en SQLite:', copy.id);
+      router.replace(`/plan/${copy.id}` as any);
+    } catch (error) {
+      console.error('Error al duplicar plan:', error);
+      Alert.alert(
+        'No se pudo duplicar el plan',
+        error instanceof Error ? error.message : 'Inténtalo nuevamente.'
+      );
+    } finally {
+      busyRef.current = false;
+      setPendingAction(null);
+    }
   };
-
+  const handleDeleteConfirm = async () => {
+    if (busyRef.current) return;
+    busyRef.current = true;
+    setPendingAction('delete');
+    try {
+      await deletePlanSaved(plan.id);
+      console.log('Plan eliminado desde Detalle en SQLite:', plan.id);
+      setShowDeleteModal(false);
+      router.replace('/history' as any);
+    } catch (error) {
+      console.error('Error al eliminar plan:', error);
+      setShowDeleteModal(false);
+      Alert.alert(
+        'No se pudo eliminar el plan',
+        error instanceof Error ? error.message : 'Inténtalo nuevamente.'
+      );
+    } finally {
+      busyRef.current = false;
+      setPendingAction(null);
+    }
+  };
   return (
     <SafeAreaView style={styles.safeArea}>
       <Header
@@ -72,11 +137,10 @@ export default function PlanDetailScreen() {
         showBack={true}
         onBack={() => router.back()}
       />
-
       <ScrollView contentContainerStyle={styles.container}>
         <Card variant="obsidian" style={styles.heroCard}>
           <Badge
-            label={isActive ? 'ACTIVO EN LA CANASTA' : 'INACTIVO'}
+            label={isArchived ? 'ARCHIVADO' : isActive ? 'ACTIVO EN LA CANASTA' : 'INACTIVO'}
             variant="obsidian"
             size="sm"
             icon={
@@ -91,13 +155,11 @@ export default function PlanDetailScreen() {
           <Text style={styles.heroMeta}>
             {result.scenarioName} · Guardado el {savedOn} · Modelo {plan.modelVersion}
           </Text>
-
           <View style={styles.heroFigures}>
             <Text style={styles.heroNumber}>{result.primaryBirdsCount}</Text>
             <Text style={styles.heroLabel}>{result.primaryBirdsLabel}</Text>
           </View>
         </Card>
-
         <Card style={styles.metricsCard}>
           <View style={styles.metricRow}>
             <Text style={styles.metricLabel}>Demanda semanal</Text>
@@ -124,7 +186,6 @@ export default function PlanDetailScreen() {
             </>
           )}
         </Card>
-
         <Card style={styles.blockCard}>
           <SectionTitle
             icon="information-circle-outline"
@@ -133,7 +194,6 @@ export default function PlanDetailScreen() {
           />
           <Text style={styles.blockText}>{result.explanation}</Text>
         </Card>
-
         <Card style={styles.blockCard}>
           <SectionTitle icon="calculator-outline" title="Cómo se calculó" size="block" />
           <View style={styles.blockSpacer} />
@@ -142,14 +202,12 @@ export default function PlanDetailScreen() {
             variables={result.formulaVariables}
           />
         </Card>
-
         {plan.lots && (
           <Card style={styles.blockCard}>
             <SectionTitle icon="grid-outline" title="Lotes de producción" size="block" />
             <LotGrid birdsPerLot={plan.lots.birdsPerLot} totalBirds={plan.lots.totalBirds} />
           </Card>
         )}
-
         {plan.reproduction && (
           <Card style={styles.blockCard}>
             <SectionTitle
@@ -200,7 +258,6 @@ export default function PlanDetailScreen() {
             />
           </Card>
         )}
-
         <Card style={styles.blockCard}>
           <SectionTitle icon="leaf-outline" title="Recursos vinculados" size="block" />
           <Text style={styles.blockText}>
@@ -213,44 +270,48 @@ export default function PlanDetailScreen() {
             style={styles.resourceButton}
           />
         </Card>
-
         <View style={styles.actions}>
           <Button
-            title={isActive ? 'Quitar de la canasta' : 'Activar en la canasta'}
-            onPress={() => togglePlanActive(plan.id)}
-            variant={isActive ? 'secondary' : 'primary'}
+            title={isArchived ? 'Plan archivado' : pendingAction === 'toggle' ? 'Guardando...' : isActive ? 'Quitar de la canasta' : 'Activar en la canasta'}
+            onPress={() => { void handleToggleActive(); }}
+            variant={isActive || isArchived ? 'secondary' : 'primary'}
+            disabled={pendingAction !== null || isArchived}
             style={styles.actionButton}
           />
           <Button
-            title="Duplicar plan"
-            onPress={handleDuplicate}
+            title={pendingAction === 'duplicate' ? 'Duplicando...' : 'Duplicar plan'}
+            onPress={() => { void handleDuplicate(); }}
+            disabled={pendingAction !== null}
             variant="secondary"
             icon={<Ionicons name="copy-outline" size={18} color={Colors.ink} />}
             style={styles.actionButton}
           />
           <Button
             title="Eliminar plan"
-            onPress={() => setShowDeleteModal(true)}
+            onPress={() => {
+              if (!busyRef.current) setShowDeleteModal(true);
+            }}
+            disabled={pendingAction !== null}
             variant="danger"
             style={styles.actionButton}
           />
         </View>
       </ScrollView>
-
       <ConfirmModal
         visible={showDeleteModal}
         title="¿Eliminar este plan?"
         message="El plan se quitará del historial de la familia activa. Esta acción no afecta a otros planes ni a las demás familias."
-        confirmText="Eliminar"
+        confirmText={pendingAction === 'delete' ? 'Eliminando...' : 'Eliminar'}
         cancelText="Cancelar"
         destructive={true}
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setShowDeleteModal(false)}
+        onConfirm={() => { void handleDeleteConfirm(); }}
+        onCancel={() => {
+          if (!busyRef.current) setShowDeleteModal(false);
+        }}
       />
     </SafeAreaView>
   );
 }
-
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
@@ -260,6 +321,16 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: Spacing.lg,
     justifyContent: 'center',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: Spacing.xl,
+  },
+  loadingText: {
+    ...Typography.caption,
+    color: Colors.ash,
+    marginTop: Spacing.md,
   },
   container: {
     padding: Spacing.lg,
