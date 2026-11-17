@@ -366,3 +366,47 @@ describe('1) motor → SQLite → motor: oráculos de la familia demo', () => {
     });
   }
 });
+
+// ============================================
+// 2) Consistencia: recalcular con las entradas guardadas
+// ============================================
+
+describe('2) consistencia: el motor reproduce lo guardado a partir de input_json', () => {
+  for (const item of HAPPY_CASES) {
+    test(`recalcula ${item.spec.id}`, async () => {
+      const { sqlite, plans } = await openDatabase();
+      try {
+        const { stored, restored } = await saveAndLoad(plans, buildPlan(item.spec));
+
+        // Solo se usan las entradas persistidas, no el Plan original.
+        const inputs = stored.inputs as {
+          consumptionLines: ConsumptionLine[];
+          scenarioKey: string;
+          lotsCount: number | null;
+          reproductionInputs: PlanSpec['breeding'] | null;
+        };
+
+        const recomputed = ENGINE[restored.productCode](inputs.consumptionLines, inputs.scenarioKey);
+        assert.deepEqual(recomputed, restored.results);
+
+        if (inputs.lotsCount === null) {
+          assert.equal(restored.lots, undefined);
+        } else {
+          assert.deepEqual(distributeLots(recomputed.primaryBirdsCount, inputs.lotsCount), restored.lots);
+        }
+
+        if (inputs.reproductionInputs === null) {
+          assert.equal(restored.reproduction, undefined);
+        } else {
+          const r = inputs.reproductionInputs!;
+          assert.deepEqual(
+            calculateQuailBreeding(r.desiredFemales, r.fertility, r.hatchability, r.survival, r.femaleRatio),
+            restored.reproduction
+          );
+        }
+      } finally {
+        sqlite.close();
+      }
+    });
+  }
+});
