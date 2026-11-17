@@ -11,6 +11,39 @@ import {
 } from '../mappers/plan.mapper';
 
 import type { Plan } from '../../types';
+import type { ProductionPlan } from '../../types/plan.types';
+
+// Resultado de leer planes: los que sí se pudieron interpretar
+// y cuántas filas hubo que descartar.
+export type PlansReadResult = {
+  plans: Plan[];
+  skipped: number;
+};
+
+// Interpretar las filas de SQLite sin que una fila ilegible
+// invalide el resto de la lista.
+function mapStoredPlans(
+  rows: ProductionPlan[]
+): PlansReadResult {
+  const plans: Plan[] = [];
+  let skipped = 0;
+
+  for (const row of rows) {
+    try {
+      plans.push(fromStoredPlan(row));
+    } catch (error) {
+      skipped += 1;
+
+      console.warn(
+        'Plan omitido porque no se pudo interpretar:',
+        row.id,
+        error
+      );
+    }
+  }
+
+  return { plans, skipped };
+}
 
 export const planPersistenceService = {
 
@@ -39,7 +72,7 @@ export const planPersistenceService = {
   // Consultar los planes de una familia.
   async getByFamilyId(
     familyId: string
-  ): Promise<Plan[]> {
+  ): Promise<PlansReadResult> {
     const db = await getDatabase();
     const repository = createPlanRepository(db);
 
@@ -47,13 +80,13 @@ export const planPersistenceService = {
       familyId
     );
 
-    return saved.map(fromStoredPlan);
+    return mapStoredPlans(saved);
   },
 
   // Recuperar planes de todas las familias.
   async getAllForFamilies(
     familyIds: string[]
-  ): Promise<Plan[]> {
+  ): Promise<PlansReadResult> {
     const db = await getDatabase();
     const repository = createPlanRepository(db);
 
@@ -63,13 +96,16 @@ export const planPersistenceService = {
       )
     );
 
-    return groups
-      .flat()
-      .map(fromStoredPlan)
-      .sort(
-        (a, b) =>
-          b.createdAt.localeCompare(a.createdAt)
-      );
+    const { plans, skipped } = mapStoredPlans(
+      groups.flat()
+    );
+
+    plans.sort(
+      (a, b) =>
+        b.createdAt.localeCompare(a.createdAt)
+    );
+
+    return { plans, skipped };
   },
 
   // Actualizar el estado de un plan.

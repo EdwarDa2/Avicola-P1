@@ -43,6 +43,7 @@ export default function PlansScreen() {
     plans,
     plansLoading,
     planStorageError,
+    plansSkippedCount,
     getActivePlanForProduct,
     duplicatePlanSaved,
     deletePlanSaved,
@@ -147,6 +148,22 @@ export default function PlansScreen() {
             size="page"
           />
         </View>
+
+        {!isLoading && !planStorageError && plansSkippedCount > 0 && (
+          <View style={styles.noticeRow}>
+            <Ionicons
+              name="warning-outline"
+              size={18}
+              color={Colors.warning}
+            />
+
+            <Text style={styles.noticeText}>
+              {plansSkippedCount === 1
+                ? 'Un plan guardado no se pudo interpretar, así que no aparece en la lista. Sus datos siguen en el teléfono.'
+                : `${plansSkippedCount} planes guardados no se pudieron interpretar, así que no aparecen en la lista. Sus datos siguen en el teléfono.`}
+            </Text>
+          </View>
+        )}
 
         {!isLoading && !planStorageError && familyPlans.length > 0 && (
           <>
@@ -468,6 +485,21 @@ const styles = StyleSheet.create({
     color: Colors.accent,
     letterSpacing: 0.8,
     marginBottom: Spacing.xs,
+  },
+  noticeRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: Spacing.sm,
+    backgroundColor: Colors.warningLight,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+    marginBottom: Spacing.md,
+  },
+  noticeText: {
+    ...Typography.caption,
+    color: Colors.ink,
+    flex: 1,
+    lineHeight: 18,
   },
   filterRow: {
     gap: Spacing.sm,

@@ -28,7 +28,6 @@ import {
 } from 'expo-router';
 
 import {
-  useEffect,
   useRef,
   useState,
 } from 'react';
@@ -134,20 +133,30 @@ export default function EditFamilyScreen() {
   // SINCRONIZAR FORMULARIO CON SQLITE
   // ==========================================
 
-  useEffect(() => {
-    if (!currentFamily) return;
+  // La familia se recupera de forma asíncrona, así que el
+  // formulario se reinicia cuando cambia el registro de origen
+  // (id o updatedAt) durante el propio render, en lugar de
+  // copiar los datos con un efecto.
+  const [syncedFamilyKey, setSyncedFamilyKey] =
+    useState<string | null>(null);
 
-    setName(currentFamily.name);
+  const familyKey = currentFamily
+    ? `${currentFamily.id}:${currentFamily.updatedAt}`
+    : null;
 
-    setAgeCounts({
-      ...currentFamily.ageCounts,
-    });
+  if (familyKey !== syncedFamilyKey) {
+    setSyncedFamilyKey(familyKey);
 
-    setNameError('');
-  }, [
-    currentFamily?.id,
-    currentFamily?.updatedAt,
-  ]);
+    if (currentFamily) {
+      setName(currentFamily.name);
+
+      setAgeCounts({
+        ...currentFamily.ageCounts,
+      });
+
+      setNameError('');
+    }
+  }
 
   // ==========================================
   // TOTAL DE INTEGRANTES

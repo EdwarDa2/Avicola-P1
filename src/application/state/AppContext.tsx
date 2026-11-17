@@ -36,6 +36,7 @@ interface AppContextType {
   plans: Plan[];
   plansLoading: boolean;
   planStorageError: string | null;
+  plansSkippedCount: number;
   basketItems: BasketItem[];
 
   reduceMotion: boolean;
@@ -150,6 +151,7 @@ export const AppProvider: React.FC<{
   const [plans, setPlans] = useState<Plan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [planStorageError, setPlanStorageError] = useState<string | null>(null);
+  const [plansSkippedCount, setPlansSkippedCount] = useState(0);
 
   // "familyId:productCode" -> planId
   const [
@@ -244,13 +246,17 @@ export const AppProvider: React.FC<{
         // incluidas las archivadas: el historial no debe perderlos.
         try {
           setPlanStorageError(null);
-          const savedPlans = await planPersistenceService.getAllForFamilies(
+          const {
+            plans: savedPlans,
+            skipped,
+          } = await planPersistenceService.getAllForFamilies(
             savedFamilies.map((family) => family.id)
           );
 
           if (!mounted) return;
 
           setPlans(savedPlans);
+          setPlansSkippedCount(skipped);
 
           // Recuperar la selección de la canasta a partir del
           // estado persistido. El plan más reciente tiene prioridad.
@@ -1060,6 +1066,7 @@ export const AppProvider: React.FC<{
         plans,
         plansLoading,
         planStorageError,
+        plansSkippedCount,
         basketItems,
 
         reduceMotion,
