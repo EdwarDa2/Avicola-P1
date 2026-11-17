@@ -490,3 +490,72 @@ describe('3) errores del motor: se rechazan antes de guardar', () => {
     });
   }
 });
+
+// ============================================
+// 4) Compatibilidad con filas antiguas
+// (la migración v3 y el mapper aislado ya se prueban en
+//  tests/plan.compatibility.migration.test.ts y tests/plan.mapper.test.ts)
+// ============================================
+
+describe('4) compatibilidad: tipos antiguos y versión de formato', () => {
+  const LEGACY_CASES = [
+    { legacyType: 'chicken_eggs', spec: HAPPY_CASES.find((c) => c.spec.id === 'plan-hen-hen_intermediate')!.spec },
+    { legacyType: 'broiler', spec: HAPPY_CASES.find((c) => c.spec.id === 'plan-chicken-fast')!.spec },
+  ] as const;
+
+  for (const { legacyType, spec } of LEGACY_CASES) {
+    test(`type = '${legacyType}' se lee como ${spec.productCode}`, async () => {
+      const { sqlite, plans } = await openDatabase();
+      try {
+        const plan = buildPlan({ ...spec, id: `plan-legacy-${legacyType}` });
+
+        // Misma instantánea actual, pero con el tipo que guardaban versiones anteriores.
+        await plans.create({ ...toStoredPlanInput(plan), type: legacyType });
+
+        const stored = await plans.findById(plan.id);
+        assert.ok(stored);
+        assert.equal(stored.type, legacyType);
+
+        const restored = fromStoredPlan(stored);
+        assert.equal(restored.productCode, spec.productCode);
+        assert.deepEqual(restored, plan);
+      } finally {
+        sqlite.close();
+      }
+    });
+  }
+
+  const SNAPSHOT_CASES: { title: string; snapshotVersion: number | undefined }[] = [
+    { title: 'snapshotVersion = 2 (formato futuro)', snapshotVersion: 2 },
+    { title: 'sin snapshotVersion (fila anterior al mapper)', snapshotVersion: undefined },
+  ];
+
+  for (const { title, snapshotVersion } of SNAPSHOT_CASES) {
+    test(`${title} lanza el error del mapper al leer`, async () => {
+      const { sqlite, plans } = await openDatabase();
+      try {
+        const plan = buildPlan({ ...HAPPY_CASES[0].spec, id: 'plan-snapshot' });
+        const input = toStoredPlanInput(plan);
+        const results = { ...input.results };
+        if (snapshotVersion === undefined) {
+          delete results.snapshotVersion;
+        } else {
+          results.snapshotVersion = snapshotVersion;
+        }
+
+        // El repositorio no conoce el formato: guarda y devuelve la fila sin quejarse.
+        await plans.create({ ...input, results });
+        const stored = await plans.findById(plan.id);
+        assert.ok(stored);
+        assert.equal(stored.results.snapshotVersion, snapshotVersion);
+
+        assert.throws(() => fromStoredPlan(stored), {
+          name: 'Error',
+          message: `El plan "${plan.name}" utiliza un formato de almacenamiento no compatible.`,
+        });
+      } finally {
+        sqlite.close();
+      }
+    });
+  }
+});
